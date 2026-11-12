@@ -444,7 +444,7 @@ def test_no_proxy_nothing_to_relay_the_export_removed_the_rest_kept(docker):
 
 
 @linux
-def test_the_export_an_older_og_wrote_is_replaced_by_one_naming_ogs_own_script(docker, tmp_path):
+def test_an_export_line_with_ogs_marker_is_replaced_by_the_current_one(docker, tmp_path):
     run, _ = docker
     h = tmp_path / "old"
     h.mkdir()
