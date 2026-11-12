@@ -53,6 +53,8 @@ if [[ -n "$OG_PY" ]]; then
        -o addopts="" --rootdir "$t" "$t/test_skip.py" >/dev/null 2>&1); local rc=$?; rm -rf "$t"; return "$rc"; }
   expect_cmd 0 "without OG_NO_SKIPS a skipped pytest test is a skip" env -u OG_NO_SKIPS bash -c "$(declare -f skipping); skipping"
   expect_cmd 1 "…with OG_NO_SKIPS=1 it fails the run" env OG_NO_SKIPS=1 bash -c "$(declare -f skipping); skipping"
+else
+  echo "  skip  OG_NO_SKIPS fails a skipped pytest test: og's Python isn't built here — run: $OGUN/setup.sh"
 fi
 
 summarize
