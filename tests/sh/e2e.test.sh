@@ -37,6 +37,16 @@ expect_cmd 0 "…and when 1Password has no account" bash -c "$(declare -f run re
 fake op 0 'URL EMAIL USER ID'
 expect_cmd 0 "…and with no owner named" refuses "OG_E2E_OWNER names the owner" OG_E2E=1
 expect_cmd 0 "…and with an owner that isn't a folder name" refuses "OG_E2E_OWNER names the owner" OG_E2E=1 OG_E2E_OWNER='Acme Corp'
+expect_cmd 0 "…and with no token ending named" refuses "OG_TOKEN_NAME names the ending" OG_E2E=1 OG_E2E_OWNER=acme
+expect_cmd 0 "…and with one that isn't an item's ending" refuses "OG_TOKEN_NAME names the ending" OG_E2E=1 OG_E2E_OWNER=acme OG_TOKEN_NAME='Home Mac'
+
+# og runs with a config folder of its own, never yours, and only og's command line carries it
+own_config() {
+  grep -qF 'og_() { XDG_CONFIG_HOME="$CFG" "$OG" "$@"; }' "$E2E" || return 1
+  # "$OG" itself only in og_ and the built check; XDG_CONFIG_HOME never exported to sbx, op or git
+  [[ "$(grep -v '^ *#' "$E2E" | grep -cF '"$OG"')" == 2 ]] && ! grep -q 'export XDG_CONFIG_HOME' "$E2E"
+}
+expect_cmd 0 "every og it runs names its own config folder, on og's command line alone" own_config
 
 # what teardown would remove: only the sandboxes named with the prefix, from sbx's own list
 only_its_own() { local o; o=$(env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:/bin" OG_E2E_SOURCE=1 \
@@ -95,7 +105,7 @@ expect_cmd 0 "the scratch state is set up before leftovers are removed" \
            l=$(grep -n "remove_leftovers" <<<"$b" | head -1 | cut -d: -f1); [ -n "$s" ] && [ -n "$l" ] && [ "$s" -lt "$l" ]'
 
 # it reads that a token item exists, by name; it never makes or rotates one
-expect_cmd 0 "it never runs og token" bash -c '! grep -nE "\"\\\$OG\"[^#]*[[:space:]]token([[:space:]]|$)" "$E2E"'
+expect_cmd 0 "it never runs og token" bash -c '! grep -nE "(\"\\\$OG\"|og_)[^#]*[[:space:]]token([[:space:]]|$)" "$E2E"'
 
 expect_cmd 0 "test.sh never runs it: it isn't among the shell tests" bash -c '[ ! -e "$OGUN/tests/sh/run.sh" ] && ! grep -q "e2e" "$OGUN/test.sh"'
 
