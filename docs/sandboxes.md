@@ -59,7 +59,7 @@ signing, a hook), the `git init` it followed is undone.
 | 5 | records the decision (template, why, mounts) |
 | 6 | probes the new sandbox for an ssh-agent, and removes it if one answers |
 | 7 | loads the repo's MCP servers |
-| 8 | applies the baseline egress; installs `jq socat` and any apt tools `SBX_APT_TOOLS` names, updates Claude Code, runs the provision command (`SBX_PROVISION`, yours), copies ssh keys, sets up [Docker inside the sandbox](#docker-inside-a-sandbox), puts og ship's script (`workflow-push-request.sh`) in `~/.local/bin` |
+| 8 | applies the baseline egress; installs `jq socat` and any apt tools `apt_tools` names, updates Claude Code, runs the provision command (`provision`, yours), copies ssh keys, sets up [Docker inside the sandbox](#docker-inside-a-sandbox), puts og ship's script (`workflow-push-request.sh`) in `~/.local/bin` |
 | 9 | with `--appa` or a template's `# appa: on` only: sets the GitHub token, installs the pinned [OpenAPPA](appa.md) and turns it on, or removes the sandbox if it can't |
 | 10 | sets HTTPS remotes, allows GitHub pushes to this repo's own remotes only ([Network](network.md#pushes-to-github)) and the [repo's own egress](network.md#a-repos-own-egress) and (without OpenAPPA) the GitHub token; for a private GitHub repo without OpenAPPA, prints a `NO OPENAPPA` warning; then attaches |
 
@@ -99,7 +99,7 @@ restart stops the relay until the next attach, which starts it again: `og attach
 | Mount | Access |
 |---|---|
 | the repo | read-write (a clone; the host checkout is at `/run/sandbox/source`) |
-| host folders `SBX_HOST_RO_MOUNTS` names (none by default) | read-only, live, at their own paths ([make sandboxes your own](config.md#make-sandboxes-your-own)) |
+| host folders `host_ro_mounts` names (none by default) | read-only, live, at their own paths ([make sandboxes your own](config.md#make-sandboxes-your-own)) |
 | related repos from the registry | read-only |
 | the file exchange | per path, see [Exchange](exchange.md) |
 | `~/.ssh/sandbox`, when it exists | read-only |
@@ -166,7 +166,7 @@ reaches it. `--sync` probes too, and stops the attach if an agent answers.
 **Keys on purpose.** Put keys you want sandboxes to use in `~/.ssh/sandbox`, a real
 directory. It's mounted read-only into every sandbox, and setup copies its keys to
 `~/.ssh/sandbox-keys/` with a `github.com` SSH config that never uses an agent. Every sandbox
-can read and copy them, so use deploy keys or a GitHub signing-only key, never a key `SBX_PROTECTED_KEYS` names.
+can read and copy them, so use deploy keys or a GitHub signing-only key, never a key `protected_keys` names.
 `ogun` refuses the folder if it holds a trusted signing key or a symlink. HTTPS with the
 sandbox's token stays the default; SSH is opt-in (`git@github.com:…` remotes), except in the
 workspace repo: there `ogun` turns GitHub SSH remotes into HTTPS, with a rewrite rule that

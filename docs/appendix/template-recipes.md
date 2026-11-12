@@ -38,7 +38,7 @@ A header value that fails its shape check builds nothing.
 | lock | one build per recipe at a time, across processes (two terminals): a kernel lock on `~/.local/state/sbx-golden-<name>.lock`, dropped when the build ends. A second build of the same recipe is refused, not queued |
 | sandbox | `sbx env create --force` for `golden-<name>`, from an empty workspace the Mac makes at `~/.local/state/sbx-golden-<name>` (deleted afterwards). A leftover sandbox of that name, from a build that didn't finish, is removed first, without a prompt. Only one whose workspace is that build path counts: a `golden-<name>` made by hand stops the build instead, and `ogun` refuses to create a sandbox named `golden-<recipe>` for any recipe (in any case), so only one made with plain `sbx` can collide |
 | network | the baseline allowlist, then the recipe's `egress` for `golden-<name>` only |
-| base | apt tools (`jq socat`, plus `SBX_APT_TOOLS`), `claude update` |
+| base | apt tools (`jq socat`, plus `apt_tools`), `claude update` |
 | recipe | `templates/<name>.sh` in og's config folder |
 | OpenAPPA | with `# appa: on` only: the pinned release, as a create installs it ([OpenAPPA](../appa.md#what-an-install-does)) |
 | scrub | the base list plus the recipe's `scrub` paths. **The build fails if one survives** |

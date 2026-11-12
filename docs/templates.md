@@ -13,7 +13,7 @@ Three example recipes, a fair picture of what one holds:
 | `orders` | the PostgreSQL client, and the staging API it talks to (`api.orders.example`, at runtime only) | the `orders` repo's registry entry |
 
 The common base is the same for every recipe: og's apt tools (`jq socat`) and any
-`SBX_APT_TOOLS` names, and the latest Claude Code.
+`apt_tools` names, and the latest Claude Code.
 
 ## Building
 

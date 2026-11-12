@@ -8,7 +8,7 @@ from ogun.core import log
 
 # the characters alone, any length: a sandbox made with plain sbx can be named past
 # the 61 og allows (name_ok) and may still have an exchange box. Kept in step with
-# the shell completion's _sbx_name_chars (shared-values.test.sh)
+# the shell completion's _og_name_chars (shared-values.test.sh)
 _CHARS = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 # exchange directories no sandbox may be named, in any case: the Mac's filesystem
 # folds case, so `Inbox` is `inbox`

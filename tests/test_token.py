@@ -67,7 +67,7 @@ def test_no_owner_is_personal_and_the_form_names_no_github_owner_so_its_your_own
 
 # ── github_owners: a folder whose GitHub owner has another name ──
 
-def test_a_folder_named_in_sbx_github_owners_opens_the_form_for_that_github_owner(mint, monkeypatch):
+def test_a_folder_named_in_github_owners_opens_the_form_for_that_github_owner(mint, monkeypatch):
     monkeypatch.setenv("OG_GITHUB_OWNERS", "acme=acme-corp personal=jdoe")
     assert "&target_name=acme-corp&" in mint("acme")[2]
     assert "&target_name=jdoe&" in mint()[2]
@@ -75,7 +75,7 @@ def test_a_folder_named_in_sbx_github_owners_opens_the_form_for_that_github_owne
 
 
 @pytest.mark.parametrize("bad", ["acme", "acme=", "=acme-corp", "acme=acme corp=", "Acme=acme-corp", "acme=acme/corp"])
-def test_a_malformed_sbx_github_owners_stops_og_naming_it(mint, monkeypatch, bad):
+def test_a_malformed_github_owners_stops_og_naming_it(mint, monkeypatch, bad):
     monkeypatch.setenv("OG_GITHUB_OWNERS", bad)
     code, out, url, _ = mint("acme")
     assert code == 1 and url is None and "github_owners" in out

@@ -14,7 +14,7 @@ from ogun.core import boxes, config, log, sbx
 from ogun.net import baseline, ruletable
 from ogun.sandbox import appa, base
 
-NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,40}")   # kept in step with the shell completion's _sbx_template_name_ok (shared-values.test.sh)
+NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,40}")   # kept in step with the shell completion's _og_template_name_ok (shared-values.test.sh)
 
 TEMPLATE_USAGE = "[<name> | ls [--json] | rm <name>]"
 TEMPLATE_HELP = dict(

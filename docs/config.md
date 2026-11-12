@@ -6,24 +6,21 @@ sandbox, its default network baseline) ship inside og. Yours live in one folder,
 
 | File | What it's for | Missing means |
 |---|---|---|
-| `config.toml` | plain settings: the 1Password vault, folders, timeouts, shared or in a profile ([profiles](appendix/flags-and-env.md#profiles)) | every default |
+| `config.toml` | plain settings: the 1Password vault, folders, your setup, shared or in a profile ([profiles](appendix/flags-and-env.md#profiles)); and, if you want your own, the network baseline ([baseline](appendix/flags-and-env.md#the-network-baseline)) | every default, og's own baseline |
 | `profile` | one line: which profile of `config.toml` this Mac uses (`OG_PROFILE` wins over it) | no profile: only the shared settings, and nothing per-profile applies |
 | `registry.json` | the repos og knows: their owners, read-only mounts, secret grants, MCP servers and templates | no registry: no mounts, grants or MCP servers; `og project` says so |
 | `marketplaces.json` | the plugin marketplaces this Mac's sandboxes mount | no plugins |
 | `templates/` | the recipes `og template` builds sandbox images from, `<name>.sh` each | no templates: a create uses sbx's own image; `og template` says so |
-| `baseline.env` | the network baseline every sandbox gets, in place of og's own | og's own baseline |
 | `appa.lock` | the OpenAPPA release sandboxes install, by version and SHA-256 | no OpenAPPA: `--appa` says so |
 
 Each file may be a link, and is read through it; an edit og makes (`og project add`) goes to
 the file the link points at, never replacing the link. A file that's there but can't be read
-as what it should be (JSON that doesn't parse, a `baseline.env` line that isn't
-`NAME="value"`, a file that isn't text or that og can't open) stops og with one line naming it: it's never skipped, since skipping a broken
+as what it should be (JSON or TOML that doesn't parse, a file that isn't text or that og can't open) stops og with one line naming it: it's never skipped, since skipping a broken
 registry would read as "nothing granted".
 
-A `baseline.env` here replaces og's own whole. There's no merge: what's allowed is always
-the content of one file. So it sets all three lists, `SBX_BASELINE_DOMAINS`,
-`SBX_BASELINE_HTTP` and `SBX_DEFAULT_RULES_OFF` (an empty one is
-`NAME=""`); one left out stops og, naming it.
+A `[baseline]` table in `config.toml` replaces og's own baseline whole. There's no merge:
+what's allowed is always the content of one table. So it sets all three lists, `domains`,
+`http` and `default_rules_off` (an empty one is `[]`); one left out stops og, naming it.
 
 ## Treat these as code
 
@@ -47,7 +44,6 @@ What they write, each optional:
 | `registry.json` | their repos: owners, mounts, grants, MCP servers ([registry](sandboxes.md)) |
 | `marketplaces.json` | the plugin marketplaces their sandboxes mount |
 | `templates/` | their recipes, `<name>.sh` each ([templates](templates.md)) |
-| `baseline.env` | a network baseline of their own, all three lists |
 | `appa.lock` | the OpenAPPA release to install, if they use it |
 
 Tab completion for `og` is `completion.bash`, sourced from their shell profile;
@@ -76,18 +72,18 @@ these, and og runs or mounts what they name without knowing what's in it:
 
 | To | Use |
 |---|---|
-| give every sandbox host folders, read-only | `SBX_HOST_RO_MOUNTS`: mounted at their own paths (a Mac path inside is the same path), live |
+| give every sandbox host folders, read-only | `host_ro_mounts`: mounted at their own paths (a Mac path inside is the same path), live |
 | give one repo's sandbox other repos, read-only | that repo's `repos.read` in `registry.json` ([sandboxes](sandboxes.md)) |
-| run your own setup in every sandbox | `SBX_PROVISION`: a command run inside at create and on every attach, so it must be safe to run again |
-| install extra apt packages | `SBX_APT_TOOLS` |
+| run your own setup in every sandbox | `provision`: a command run inside at create and on every attach, so it must be safe to run again |
+| install extra apt packages | `apt_tools` |
 | bake heavier tools into an image | a recipe in `templates/` ([templates](templates.md)) |
 
 The setup command runs inside the sandbox, so the script it names has to be there: keep it
-in a folder `SBX_HOST_RO_MOUNTS` mounts. A leading `~/` in either is your Mac's home:
+in a folder `host_ro_mounts` mounts. A leading `~/` in either is your Mac's home:
 
 ```toml
-SBX_HOST_RO_MOUNTS = "~/sandbox-setup"
-SBX_PROVISION = "~/sandbox-setup/provision.sh"
+host_ro_mounts = "~/sandbox-setup"
+provision = "~/sandbox-setup/provision.sh"
 ```
 
 ### Example: AWS
@@ -110,7 +106,7 @@ For a sandbox to render with the Mac's fonts (a browser, a PDF tool), mount the 
 folders and point fontconfig at them from your setup script:
 
 ```toml
-SBX_HOST_RO_MOUNTS = "~/sandbox-setup:~/Library/Fonts:/Library/Fonts"
+host_ro_mounts = "~/sandbox-setup:~/Library/Fonts:/Library/Fonts"
 ```
 
 ```bash

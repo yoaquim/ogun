@@ -100,7 +100,7 @@ read the same table the code's own usage errors use, so they can't drift apart.
 | `ogun log [-n <count>] [--json]` | what og changed on this Mac, newest last: removals, allows, policy, the registry |
 | `ogun pass <name> <ENV_VAR> <host>…\|--expose [--item <name>\|--paste] [--vault <v>] [--field <f>]` · `ogun pass <name> <ENV_VAR> --rm` · `ogun pass <name>` | hand one secret to one sandbox, from 1Password (an item, in a vault other than the default, a field other than `credential`) or pasted; `--rm` takes it back; a name alone lists what it holds ([Secrets](secrets.md#any-other-secret-og-pass)) |
 | `ogun token [<owner>] [<days>]` | mint or rotate an owner's GitHub token: GitHub's form pre-filled, saved in 1Password, its expiry recorded ([Secrets](secrets.md#minting-and-rotating-og-token)) |
-| `ogun skills` | mirror the skills folder (`SBX_SKILLS_DIR`) into sbx's shared skills store, which every sandbox mounts, and lock it read-only |
+| `ogun skills` | mirror the skills folder (`skills_dir`) into sbx's shared skills store, which every sandbox mounts, and lock it read-only |
 | `ogun project ls [--json]` · `ogun project add [<repo>] [--write]` | the repo registry: what mounts into this repo's sandboxes |
 | `ogun mcp [ls [--json]]` · `ogun mcp auth <server> \| --all` · `ogun mcp load <name>` | gateway MCP servers: login status and who gets each; log in again (then reloaded into the running sandboxes that use it); reload one sandbox's servers ([MCP gateway](appendix/mcp-gateway.md#logging-in-again)) |
 | `ogun template [<name> \| ls [--json] \| rm <name>]` | build sandbox templates, list them, or remove one's image |
@@ -121,9 +121,9 @@ Flags for a bare `ogun` or `ogun <name>`:
 
 ## Output
 
-- **Tab completion** follows the command table without asking og or sbx: the commands are text, and sandbox names come from a file og rewrites each time it lists them (`~/.config/sbx/ogun/sandbox-names`); only `og mcp auth <TAB>` asks og, for the servers. Sandbox names where a name goes, then that
+- **Tab completion** follows the command table without asking og or sbx: the commands are text, and sandbox names come from a file og rewrites each time it lists them (`~/.local/state/ogun/sandbox-names`); only `og mcp auth <TAB>` asks og, for the servers. Sandbox names where a name goes, then that
   command's subcommands and flags (`og net <name> <TAB>`, `og template <TAB>` for recipes). After a sandbox name it offers the create flags, with
-  `--org` completing the owners `SBX_PROJECTS` names.
+  `--org` completing the owners `projects` names.
 - **Read commands speak JSON:** `ogun ls --json`,
   `ogun project ls --json`, `ogun mcp ls --json`, `ogun template ls --json`.
 - **On a terminal**, each message starts with a dim local clock and is colored by outcome:
@@ -134,7 +134,7 @@ Flags for a bare `ogun` or `ogun <name>`:
 
 | Needs `ogun rm` + `ogun` | Live, no recreate |
 |---|---|
-| new related-repo grants (`ogun project add`) | edits in a read-only host mount (`SBX_HOST_RO_MOUNTS`): the mount is live |
+| new related-repo grants (`ogun project add`) | edits in a read-only host mount (`host_ro_mounts`): the mount is live |
 | new host read-only mounts | skills, after `og skills` |
 | a newly built template, or a newly cloned plugin | an `ogun pass` re-pass |
 | the exchange tree, for a sandbox older than it | `ogun <name> --sync`: setup, the provision command, ssh keys, the agent probe |

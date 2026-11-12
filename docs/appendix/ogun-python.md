@@ -8,10 +8,9 @@ Its settings come from `~/.config/ogun/config.toml` and the environment
 (`help.py`) is the one list of commands and their arguments, which `og help`, every usage
 line and tab completion read. Tab completion is og's own, `completion.bash`, tested to
 define nothing else; a shell profile sources it. What
-it asks of og goes through `_sbx_og`, the installed og in its own folder (`og internal …`). The baseline lists live in
-`src/ogun/net/baseline.env`, beside the module that reads it; `og internal baseline`
-prints them as `NAME="value"` lines, with this Mac's settings' hosts in, for a check of the live
-rules to compare against.
+it asks of og goes through `_og_run`, the installed og in its own folder (`og internal …`). The baseline lists live in
+`src/ogun/net/baseline.toml`, beside the module that reads it; `og internal baseline`
+prints the baseline og applies as a `[baseline]` table, ready to copy into `config.toml`.
 og's own behaviour is pytest, in `tests`.
 
 ## What runs where
@@ -104,7 +103,7 @@ to og's behaviour comes with the test that shows it.
 `tests/conftest.py` holds what they share:
 
 - **`home`**: a scratch home, with `HOME`, og's state folder, its config folder (its files may be
-  links, which og reads through) and `SBX_PROJECTS` all inside it, so no test reads or writes the real ones.
+  links, which og reads through) and `projects` all inside it, so no test reads or writes the real ones.
 - **`registry`**: writes that home's registry, `registry({"name": {"owner": ...}})`.
 - **`fakes`**: sbx, op, curl, git and ssh, first on `PATH`. `fakes.sbx.answer(["ls"],
   stdout=..., code=...)` sets what a call starting with those arguments prints and exits

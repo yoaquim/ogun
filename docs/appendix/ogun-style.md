@@ -127,7 +127,7 @@ this for free.
 
 ## The record
 
-Every change og makes on this Mac is one line in `~/.config/sbx/ogun/og.log` (`SBX_OGUN_DIR`):
+Every change og makes on this Mac is one line in `~/.local/state/ogun/og.log`:
 when, the command as you typed it, and what changed (`cub removed`, `cub may reach
 docs.example.com (reading only)`, `policy applied: …`). `og log` replays the last 20 in classic
 format, a section a day, as plain lines with the command under each (piped, one whole line

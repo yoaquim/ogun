@@ -20,7 +20,7 @@ sandboxes, in most cases without the sandbox ever seeing the value.
 - `op` runs on the host through the 1Password app. Its unlock prompt authorizes a terminal session
   until the app auto-locks, so keep auto-lock short.
 - No service accounts, and no `op` inside sandboxes.
-- og reads from **one vault, `Sandbox`** unless `SBX_VAULT` names another, so what sandboxes
+- og reads from **one vault, `Sandbox`** unless `vault` names another, so what sandboxes
   may be given can be listed, picked from and loaded as a set. `og pass --vault` takes a
   single secret from elsewhere.
 
@@ -30,9 +30,9 @@ One fine-grained token per resource owner, rotated every 60 days by default.
 
 | Rule | Detail |
 |---|---|
-| **Keyed by folder** | the folder under `~/Projects` names the owner: `~/Projects/acme/x` → `acme`. `og token`, `og` and og's registry all use this one key. Other project folders can be listed in `SBX_PROJECTS`, each per-owner like `~/Projects` or fixed to one owner ([settings](appendix/flags-and-env.md)) |
-| **Item name** | `github-pat-<folder>-<ending>`; the personal token's folder is `personal`. `<ending>` is the Mac it was minted for, from og's profile (`SBX_TOKEN_NAME`, else the profile's name): `home` or `work`, say. Examples: `github-pat-personal-home`, `github-pat-acme-home`, `github-pat-acme-work` |
-| **Machine rule** | a profile that sets `SBX_TOKEN_SUFFIX` uses only the items with that ending (a `work` profile with `-work`: only `github-pat-*-work`). One that doesn't may use every `github-pat-*` item, and `ogun` tries its own first, then the other profiles' |
+| **Keyed by folder** | the folder under `~/Projects` names the owner: `~/Projects/acme/x` → `acme`. `og token`, `og` and og's registry all use this one key. Other project folders can be listed in `projects`, each per-owner like `~/Projects` or fixed to one owner ([settings](appendix/flags-and-env.md)) |
+| **Item name** | `github-pat-<folder>-<ending>`; the personal token's folder is `personal`. `<ending>` is the Mac it was minted for, from og's profile (`token_name`, else the profile's name): `home` or `work`, say. Examples: `github-pat-personal-home`, `github-pat-acme-home`, `github-pat-acme-work` |
+| **Machine rule** | a profile that sets `token_suffix` uses only the items with that ending (a `work` profile with `-work`: only `github-pat-*-work`). One that doesn't may use every `github-pat-*` item, and `ogun` tries its own first, then the other profiles' |
 | **Picking the owner** | from the path. `--org <owner>` or `--item <vault item>` overrides it. Outside `~/Projects`, at a terminal, `ogun` offers a numbered menu of the vault's tokens; without a terminal it uses personal |
 | **Registry override** | a repo entry may declare `"github": "<org>"` when its GitHub org differs from its folder (`acme/shop` → the `acme-labs` token). It applies only when the path names the entry's declared `owner` |
 | **One per sandbox** | set at create, scoped to that sandbox, and set on attach if missing. The proxy stamps it over any other GitHub credential, so a sandbox can never hold a second GitHub identity. Cross-org work goes through the host: `git fetch sandbox-<name>`, then push yourself |
@@ -113,7 +113,7 @@ placeholder.
 
 | | The value comes from |
 |---|---|
-| `--item <name>` (default) | that item in the vault `SBX_VAULT` names (`Sandbox` unset), asked for when left out (`--vault`, `--field` for exceptions) |
+| `--item <name>` (default) | that item in the vault `vault` names (`Sandbox` unset), asked for when left out (`--vault`, `--field` for exceptions) |
 | `--paste`, `-p` | a hidden prompt, one line. Pipe it in for a multi-line key: `pbpaste \| og pass …` |
 
 - A host is required unless you `--expose`: forgetting it refuses rather than exposing.
@@ -176,8 +176,8 @@ keeps the grant, so for an urgent revocation, attach to it (or remove it) now.
 
 **Approved once per Mac.** A grant this Mac hasn't approved is printed in full at the create
 (`SECRET GRANT, not yet approved on this Mac: …`, with `EVERY SANDBOX` for a top-level one) and
-asked about before anything is made. The answer, yes or no, is remembered in `~/.config/sbx/ogun/approved-secrets`
-(0600, outside every repo); a changed item, field, host, 1Password vault (`SBX_VAULT`), owner (for a repo grant) or og profile (for a top-level one) is a new grant and is asked again.
+asked about before anything is made. The answer, yes or no, is remembered in `~/.local/state/ogun/approved-secrets`
+(0600, outside every repo); a changed item, field, host, 1Password vault (`vault`), owner (for a repo grant) or og profile (for a top-level one) is a new grant and is asked again.
 With no terminal (a background run), an unapproved grant is skipped and named. A declined grant
 isn't asked about again (being asked at every attach would train a reflexive yes); to undo a
 decline, delete its line in that file. So an

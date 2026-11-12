@@ -18,7 +18,7 @@ def exchange() -> Path:
 
 def box(name: str) -> Path | None:
     """A sandbox's box (in/ + out/), boxes/<name>, or None. Kept in step with the
-    shell completion's _sbx_exchange_box."""
+    shell completion's _og_exchange_box."""
     b = exchange() / "boxes" / name
     return b if b.is_dir() else None
 
