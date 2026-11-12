@@ -438,7 +438,7 @@ def test_activate_with_no_provision_command_makes_the_skills_folder_itself_and_t
 
 
 def test_a_provision_command_that_sets_up_no_claude_config_still_gets_openappa_its_folder(box, fix):
-    # SBX_PROVISION is anyone's setup: one that leaves no ~/.claude must not cost the sandbox
+    # provision is anyone's setup: one that leaves no ~/.claude must not cost the sandbox
     b = box()
     p = b.activate(OGUN_PROVISION="true")
     assert p.returncode == 0, p.stdout + p.stderr

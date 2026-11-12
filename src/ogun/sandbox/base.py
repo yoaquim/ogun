@@ -1,4 +1,4 @@
-"""The common base a sandbox starts with: og's apt tools and any SBX_APT_TOOLS
+"""The common base a sandbox starts with: og's apt tools and any apt_tools
 names, and the latest Claude Code. A template build installs it into its image; setup() puts it, and
 the rest of a sandbox's setup, in place at create and on attach --sync."""
 
@@ -12,8 +12,8 @@ OWN_TOOLS = "jq socat"   # og's scripts read JSON with jq; the docker relay is s
 
 
 def apt_tools_list() -> str:
-    """og's own apt tools, then those SBX_APT_TOOLS adds (space-separated), each once."""
-    return " ".join(dict.fromkeys([*OWN_TOOLS.split(), *settings.get("SBX_APT_TOOLS").split()]))
+    """og's own apt tools, then those apt_tools adds (space-separated), each once."""
+    return " ".join(dict.fromkeys([*OWN_TOOLS.split(), *settings.get("apt_tools").split()]))
 
 
 _APT_WAIT = r"""for i in $(seq 60); do
@@ -66,12 +66,16 @@ echo "ogun: updater exited $rc at $(date +%%T), now ${a:-?} (run $1)" >> "$L"
 echo "v ${b:-?} ${a:-?}"; [ "$rc" = 0 ]"""
 
 
+UPDATE_TIMEOUT = 300   # seconds; the download is ~230 MB
+UPDATE_LOG = "/tmp/ogun-claude-update.log"   # inside the sandbox
+
+
 def update_timeout() -> int:
-    return settings.seconds("SBX_CLAUDE_UPDATE_TIMEOUT", 300)   # the download is ~230 MB
+    return UPDATE_TIMEOUT
 
 
 def update_log() -> str:
-    return settings.get("SBX_CLAUDE_UPDATE_LOG") or "/tmp/ogun-claude-update.log"
+    return UPDATE_LOG
 
 
 def claude_update(sb: str) -> None:
@@ -129,7 +133,7 @@ def setup(sb: str) -> bool:
     log.step("provision")
     p = session.provision(sb)
     if p is not None and p.returncode:
-        log.warn(f"  {log.WARNING} the provision command failed (SBX_PROVISION)")
+        log.warn(f"  {log.WARNING} the provision command failed (provision)")
         sbx.said(p)
         return False
     if not ssh_keys(sb):

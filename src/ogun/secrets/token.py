@@ -22,7 +22,7 @@ HELP = dict(
         ("og token <owner>", "an owner's: its folder's name in a project folder, e.g. acme"),
         ("og token <owner> <days>", "another lifetime: 1 to 366 days, GitHub's maximum"),
     ],
-    notes=["The token goes in 1Password item github-pat-<owner>-<SBX_TOKEN_NAME, else the og profile> (vault $SBX_VAULT). "
+    notes=["The token goes in 1Password item github-pat-<owner>-<token_name, else the og profile> (the vault setting). "
            "Sandboxes made after it get it; an existing one gets it at og <name> --sync. More: docs/secrets.md"],
     examples=["og token", "og token acme", "og token acme 90"],
 )
@@ -30,7 +30,7 @@ HELP = dict(
 MAX_DAYS = 366   # GitHub's form takes 1..366 (expires_in); an org policy may cap it lower, in the form
 DEFAULT_DAYS = 60
 OWNER_RE = re.compile(r"[a-z0-9][a-z0-9-]*")   # the lowercase folder names vault_items() lists
-# SBX_GITHUB_OWNERS: "<folder>=<github owner> …", for a folder whose GitHub owner has another name
+# github_owners: "<folder>=<github owner> …", for a folder whose GitHub owner has another name
 PAIR_RE = re.compile(r"([a-z0-9][a-z0-9-]*)=([A-Za-z0-9][A-Za-z0-9-]*)")
 FORM = "https://github.com/settings/personal-access-tokens/new"
 PERMISSIONS = "contents=write&pull_requests=write&actions=read&statuses=read"
@@ -68,20 +68,20 @@ def parse(args: list[str]) -> tuple[str, int] | None:
 
 
 def github_owners() -> dict[str, str]:
-    """SBX_GITHUB_OWNERS as folder → GitHub owner. One pair that isn't one stops og: a
+    """github_owners as folder → GitHub owner. One pair that isn't one stops og: a
     form opened for the wrong account would mint a token for it."""
     pairs = {}
-    for word in settings.get("SBX_GITHUB_OWNERS").split():
+    for word in settings.get("github_owners").split():
         m = PAIR_RE.fullmatch(word)
         if not m:
-            raise settings.Unreadable(f"SBX_GITHUB_OWNERS: '{log.shown(word)}' isn't <folder>=<github owner> "
+            raise settings.Unreadable(f"github_owners: '{log.shown(word)}' isn't <folder>=<github owner> "
                                       "(the folder lowercase a-z, 0-9, -; the owner a GitHub name)")
         pairs[m[1]] = m[2]
     return pairs
 
 
 def github_owner(owner: str) -> str:
-    """The GitHub account a folder's token is for: SBX_GITHUB_OWNERS' for it, else the
+    """The GitHub account a folder's token is for: github_owners' for it, else the
     folder's own name; personal's, unnamed, is "" and left to GitHub: your own account."""
     return github_owners().get(owner, "" if owner == "personal" else owner)
 

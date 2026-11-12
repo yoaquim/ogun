@@ -89,7 +89,7 @@ def test_a_folder_that_isnt_the_repo_is_refused(capsys, repos, what):
 
 @pytest.mark.parametrize("what", [w for w in ASKS if "~/Projects" in UNPLACED[w]])
 def test_and_the_refusal_names_the_project_folders_og_reads(capsys, repos, monkeypatch, what):
-    monkeypatch.setenv("SBX_PROJECTS", "~/Projects:~/Work=umbrella")
+    monkeypatch.setenv("OG_PROJECTS", "~/Projects:~/Work=umbrella")
     _, err = _run(capsys, repos, what, "unplaced", owner="umbrella")
     assert UNPLACED[what].replace("~/Projects/<owner>/web", "~/Projects/<owner>/web or ~/Work/web")\
         .replace("under ~/Projects/<owner>/", "under ~/Projects/<owner>/ or ~/Work/") in err
@@ -97,7 +97,7 @@ def test_and_the_refusal_names_the_project_folders_og_reads(capsys, repos, monke
 
 def test_a_secret_grants_refusal_names_them_too(capfd, repos, monkeypatch):
     from ogun.secrets import approval
-    monkeypatch.setenv("SBX_PROJECTS", "~/Projects:~/Work=umbrella")
+    monkeypatch.setenv("OG_PROJECTS", "~/Projects:~/Work=umbrella")
     repos["entry"](owner="umbrella", secrets=[{"env": "WEB_TOKEN", "hosts": ["example.com"], "item": "web"}])
     approval.grants(repos["unplaced"])
     assert "(~/Projects/<owner>/web or ~/Work/web, or the entry's `path`) — skipped" in capfd.readouterr().err

@@ -11,7 +11,7 @@ from ogun.sandbox import sandboxes
 
 @pytest.fixture
 def folder(home):
-    d = home / ".config/sbx/ogun/sandboxes"
+    d = home / ".local/state/ogun/sandboxes"
     d.mkdir()
     return d
 
@@ -33,7 +33,7 @@ def test_a_missing_or_unreadable_record_is_none(folder, text):
 
 
 def test_records_live_in_ogs_state_folder(home):
-    assert records.records_dir() == home / ".config/sbx/ogun/sandboxes"
+    assert records.records_dir() == home / ".local/state/ogun/sandboxes"
 
 
 def test_protected_names_the_sandboxes_whose_record_has_openappa(folder):

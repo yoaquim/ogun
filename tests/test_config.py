@@ -102,7 +102,7 @@ def test_an_openappa_install_with_no_pin_names_the_file_where_and_what_its_for(c
 
 
 def test_a_pin_set_elsewhere_that_isnt_there_is_named_where_og_looked(cfg, fakes, capfd, monkeypatch, tmp_path):
-    monkeypatch.setenv("SBX_APPA_LOCK", str(tmp_path / "elsewhere/appa.lock"))
+    monkeypatch.setattr("ogun.sandbox.appa.lock_file", lambda: tmp_path / "elsewhere/appa.lock")
     assert appa.install("box") is False
     err = capfd.readouterr().err
     assert str(tmp_path / "elsewhere/appa.lock") in err and "~/.config/ogun/appa.lock" not in err

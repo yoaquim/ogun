@@ -4,7 +4,7 @@ The one removal path (rm_clean) is also what a failed create and an attach's --r
 import re
 import subprocess
 
-from ogun.core import boxes, log, naming, paths, records, sbx, settings
+from ogun.core import boxes, log, naming, paths, records, sbx
 from ogun.exchange import folders
 from ogun.sandbox import sandboxes
 
@@ -99,9 +99,12 @@ def sbx_said(msg: str, p) -> None:
             log.note(log.shown(line.strip()), err=True)
 
 
+PROBE_TIMEOUT, BOOT_TIMEOUT = 120, 400   # seconds: a running sandbox's check, and a stopped one's (it boots first)
+
+
 def probe_timeout(stopped: bool) -> int:
     """How long the check for unsaved work may take: a stopped sandbox boots for it."""
-    return settings.seconds("SBX_RM_BOOT_TIMEOUT", 400) if stopped else settings.seconds("SBX_RM_PROBE_TIMEOUT", 120)
+    return BOOT_TIMEOUT if stopped else PROBE_TIMEOUT
 
 
 def rm_if_clean(name: str) -> int:

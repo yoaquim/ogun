@@ -15,7 +15,7 @@ def grants_vault() -> str:
 
 
 def approved_file() -> Path:
-    return settings.path("SBX_SECRETS_APPROVED", paths.state_dir() / "approved-secrets")
+    return paths.state_dir() / "approved-secrets"
 
 
 def grants(d: str, quiet: bool = False) -> list[str]:

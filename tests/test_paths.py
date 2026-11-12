@@ -103,19 +103,19 @@ def test_an_owner_that_isnt_a_plain_name_is_ignored(tree, registry, owner):
     assert paths.path_owner(str(tree / ".hidden-repo")) is None
 
 
-# ── project folders (SBX_PROJECTS): per-owner, or one fixed owner ──
+# ── project folders (projects): per-owner, or one fixed owner ──
 
 @pytest.fixture
 def roots(tree, monkeypatch):
     """~/Projects per-owner as before and ~/Work fixed to acme; set as
-    SBX_PROJECTS, or the listing given."""
+    projects, or the listing given."""
     for d in ("Work/api/sub", "Work/.hidden", "outside/real"):
         (tree / d).mkdir(parents=True)
     (tree / "Work/link-out").symlink_to(tree / "outside/real")
     (tree / "outside/link-in").symlink_to(tree / "Work/api")
 
     def use(v=f"{tree}/Projects:{tree}/Work=acme"):
-        monkeypatch.setenv("SBX_PROJECTS", v)
+        monkeypatch.setenv("OG_PROJECTS", v)
         return tree
     return use
 
@@ -158,9 +158,9 @@ def test_a_registry_path_that_is_a_project_folder_itself_is_never_asked(roots, t
 
 
 def test_unset_is_projects_per_owner_and_one_folder_is_that_folder_per_owner(home, monkeypatch):
-    monkeypatch.delenv("SBX_PROJECTS")
+    monkeypatch.delenv("OG_PROJECTS")
     assert paths.roots() == [(str(home / "Projects"), None)] and paths.projects() == str(home / "Projects")
-    monkeypatch.setenv("SBX_PROJECTS", "~/Code")
+    monkeypatch.setenv("OG_PROJECTS", "~/Code")
     assert paths.roots() == [(str(home / "Code"), None)] and paths.projects() == str(home / "Code")
 
 
@@ -172,7 +172,7 @@ def test_the_projects_folder_the_other_commands_use_is_the_first_per_owner_one(r
 
 
 def test_a_message_names_the_project_folders_og_reads_not_always_projects(roots, tree, monkeypatch):
-    monkeypatch.delenv("SBX_PROJECTS")
+    monkeypatch.delenv("OG_PROJECTS")
     assert paths.shown_projects() == "~/Projects" and paths.shown_repo("x") == "~/Projects/<owner>/x"
     roots(f"{tree}/Code:{tree}/Work=acme")
     assert paths.shown_projects() == "~/Code or ~/Work"
@@ -181,9 +181,9 @@ def test_a_message_names_the_project_folders_og_reads_not_always_projects(roots,
 
 
 def test_and_one_og_cant_read_names_the_setting(monkeypatch, home):
-    monkeypatch.setenv("SBX_PROJECTS", "relative")
-    assert paths.shown_projects() == "a project folder (SBX_PROJECTS)"
-    assert paths.shown_repo("x") == "a project folder's <owner>/x (SBX_PROJECTS)"
+    monkeypatch.setenv("OG_PROJECTS", "relative")
+    assert paths.shown_projects() == "a project folder (projects)"
+    assert paths.shown_repo("x") == "a project folder's <owner>/x (projects)"
 
 
 def test_no_message_outside_paths_names_projects_whatever_the_setting():
@@ -210,8 +210,8 @@ def test_no_message_outside_paths_names_projects_whatever_the_setting():
     ("~/Work=../up", "isn't an owner"),
 ])
 def test_a_project_folder_list_og_cant_read_stops_og_never_the_default(home, monkeypatch, v, why):
-    monkeypatch.setenv("SBX_PROJECTS", v)
-    with pytest.raises(settings.Unreadable, match=f"SBX_PROJECTS.*{why}"):
+    monkeypatch.setenv("OG_PROJECTS", v)
+    with pytest.raises(settings.Unreadable, match=f"projects.*{why}"):
         paths.org_from_path(str(home / "Projects/umbrella/shop"))
 
 
@@ -231,14 +231,14 @@ NESTED = [
 @pytest.mark.parametrize("v", NESTED)
 def test_project_folders_that_nest_stop_og_naming_both(tree, monkeypatch, v):
     (tree / "proj-link").symlink_to(tree / "Projects")
-    monkeypatch.setenv("SBX_PROJECTS", v.format(t=tree))
-    with pytest.raises(settings.Unreadable, match=r"SBX_PROJECTS: .* (is inside|are the same folder).*project folders can't nest"):
+    monkeypatch.setenv("OG_PROJECTS", v.format(t=tree))
+    with pytest.raises(settings.Unreadable, match=r"projects: .* (is inside|are the same folder).*project folders can't nest"):
         paths.org_from_path(str(tree / "Projects/umbrella/shop"))
 
 
 def test_folders_side_by_side_dont_nest_even_when_one_name_starts_like_the_other(tree, monkeypatch):
     (tree / "Work2").mkdir()
-    monkeypatch.setenv("SBX_PROJECTS", f"{tree}/Work=acme:{tree}/Work2=globex")
+    monkeypatch.setenv("OG_PROJECTS", f"{tree}/Work=acme:{tree}/Work2=globex")
     assert [o for _, o in paths.roots()] == ["acme", "globex"]
 
 

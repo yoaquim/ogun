@@ -13,7 +13,7 @@ from ogun.exchange import screen
 
 
 def exchange() -> Path:
-    return settings.path("SBX_EXCHANGE", Path.home() / "sandboxes.noindex")
+    return settings.path("exchange", Path.home() / "sandboxes.noindex")
 
 
 def box(name: str) -> Path | None:

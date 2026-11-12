@@ -5,12 +5,12 @@ import os
 import sys
 from pathlib import Path
 
-from ogun.core import boxes, files, log, paths, records, registry, sbx, settings
+from ogun.core import boxes, files, log, paths, records, registry, sbx
 from ogun.net import ruletable
 
 
 def _approvals() -> Path:
-    return settings.path("SBX_EGRESS_APPROVED", paths.state_dir() / "approved-egress")
+    return paths.state_dir() / "approved-egress"
 
 
 def _approved(g: dict) -> bool:

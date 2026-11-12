@@ -17,9 +17,9 @@ SCRIPTS = OGUN / "sandbox-scripts"   # what og sends into a sandbox, found besid
 
 
 def state_dir() -> Path:
-    """og's own state on this Mac (SBX_OGUN_DIR): create records, the
-    record of changes."""
-    return settings.path("SBX_OGUN_DIR", Path.home() / ".config/sbx/ogun")
+    """og's own state on this Mac: create records, token records, approvals, the
+    record of changes. $XDG_STATE_HOME/ogun, else ~/.local/state/ogun."""
+    return Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "ogun"
 
 
 def registry_file() -> Path:
@@ -40,25 +40,25 @@ def registry_entry(name: str):
 
 
 def roots() -> list[tuple[str, str | None]]:
-    """The folders projects live in (SBX_PROJECTS), colon-separated like PATH:
+    """The folders projects live in (projects), colon-separated like PATH:
     a folder alone is per-owner (<folder>/<owner>/<repo>), folder=owner is
     fixed-owner (<folder>/<repo>, every repo that owner's). Unset: ~/Projects,
     per-owner. A list og can't read stops og: a misread folder would hand a
     repo another owner's token."""
-    v = settings.get("SBX_PROJECTS")
+    v = settings.get("projects")
     if not v:
         return [(str(Path.home() / "Projects"), None)]
     out = []
     for part in v.split(":"):
         folder, eq, owner = part.rpartition("=") if "=" in part else (part, "", "")
         if not folder:
-            raise settings.Unreadable(f"SBX_PROJECTS ({v}) names an empty folder; folders go colon-separated, "
+            raise settings.Unreadable(f"projects ({v}) names an empty folder; folders go colon-separated, "
                                       "a fixed owner as folder=owner")
         f = os.path.expanduser(folder)
         if not os.path.isabs(f):
-            raise settings.Unreadable(f"SBX_PROJECTS: {folder} isn't a full path (/… or ~/…)")
+            raise settings.Unreadable(f"projects: {folder} isn't a full path (/… or ~/…)")
         if eq and not _OWNER_RE.fullmatch(owner):
-            raise settings.Unreadable(f"SBX_PROJECTS: '{owner}' in {part} isn't an owner (a GitHub owner's name)")
+            raise settings.Unreadable(f"projects: '{owner}' in {part} isn't an owner (a GitHub owner's name)")
         out.append((f, owner if eq else None))
     # one folder inside another would make two rules answer for the same folders (a
     # repo in the inner one, the inner one where an outer repo would be, inside one):
@@ -69,7 +69,7 @@ def roots() -> list[tuple[str, str | None]]:
             if a == b or b.startswith(a + os.sep) or a.startswith(b + os.sep):
                 inner, outer = (fa, fb) if len(a) >= len(b) else (fb, fa)
                 how = f"{fa} and {fb} are the same folder" if a == b else f"{inner} is inside {outer}"
-                raise settings.Unreadable(f"SBX_PROJECTS: {how}; project folders can't nest, "
+                raise settings.Unreadable(f"projects: {how}; project folders can't nest, "
                                           "so one rule names each folder's owner")
     return out
 
@@ -85,7 +85,7 @@ def shown_projects() -> str:
     try:
         return " or ".join(log.path(f) for f, _ in roots())
     except settings.Unreadable:
-        return "a project folder (SBX_PROJECTS)"
+        return "a project folder (projects)"
 
 
 def shown_repo(repo: str = "<repo>") -> str:
@@ -94,7 +94,7 @@ def shown_repo(repo: str = "<repo>") -> str:
     try:
         return " or ".join(log.path(f) + ("/<owner>" if owner is None else "") + f"/{repo}" for f, owner in roots())
     except settings.Unreadable:
-        return f"a project folder's <owner>/{repo} (SBX_PROJECTS)"
+        return f"a project folder's <owner>/{repo} (projects)"
 
 
 def real(p: str) -> str:

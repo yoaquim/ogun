@@ -26,7 +26,7 @@ def sb(home, fakes, monkeypatch):
     doesn't know."""
     e = home / "exchange"
     e.mkdir()
-    monkeypatch.setenv("SBX_EXCHANGE", str(e))
+    monkeypatch.setenv("OG_EXCHANGE", str(e))
 
     def set_(out="", code=0, delay=0, ls_fail=False, marked=False, rm_fail=False, cp=None):
         s = fakes.sbx
@@ -141,7 +141,7 @@ def test_an_sbx_that_cant_list_keeps_it_gone_is_proven_never_assumed(og, sb):
 
 def test_a_check_past_its_time_limit_keeps_it_exit_124_sbx_rm_never_run(og, sb, monkeypatch):
     e, set_ = sb
-    monkeypatch.setenv("SBX_RM_PROBE_TIMEOUT", "1")
+    monkeypatch.setattr("ogun.sandbox.remove.PROBE_TIMEOUT", 1)
     s = set_(delay=5)
     box("run1")
     code, out, err = og("rm", "run1", "--if-clean")
@@ -187,7 +187,7 @@ def test_attachs_rm_gets_a_reason_to_keep_it_from_the_same_failed_check(sb):
 
 def test_one_past_its_time_limit_says_the_sandbox_didnt_answer_in_time(og, sb, monkeypatch):
     e, set_ = sb
-    monkeypatch.setenv("SBX_RM_BOOT_TIMEOUT", "1")
+    monkeypatch.setattr("ogun.sandbox.remove.BOOT_TIMEOUT", 1)
     set_(delay=5)
     box("run1")
     code, out, err = og("rm", "run1")
@@ -306,7 +306,7 @@ def test_a_record_that_cant_be_written_never_fails_the_removal_it_records(og, sb
     set_()
     box("run1")
     (home / "not-a-dir").write_text("")
-    monkeypatch.setenv("SBX_OGUN_DIR", str(home / "not-a-dir"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(home / "not-a-dir"))
     assert og("rm", "run1", "--force")[0] == 0 and not boxed(e, "run1")
 
 

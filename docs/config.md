@@ -58,19 +58,16 @@ The settings (each also an environment variable; defaults and details in
 
 | Setting | For |
 |---|---|
-| `SBX_VAULT` | the 1Password vault their tokens and secrets live in |
-| `SBX_PROJECTS` | their project folders, per-owner or one owner each |
-| `SBX_TOKEN_NAME`, `SBX_TOKEN_SUFFIX` | how their token items are named, and which a Mac may use |
-| `SBX_GITHUB_OWNERS` | the GitHub account behind a project folder whose name differs, for `og token`'s form |
-| `SBX_PROTECTED_KEYS` | the keys that must never go into a sandbox: a commit-signing key, git's `allowed_signers`, say |
-| `SBX_PROVISION` | the command that sets up each sandbox (their own setup script) |
-| `SBX_SKILLS_DIR` | the skills folder mirrored into sbx's skills store |
-| `SBX_HOST_RO_MOUNTS` | host folders every sandbox reads (none by default; a folder of shared settings, say) |
-| `SBX_APT_TOOLS` | apt tools beyond og's own, in every sandbox and template |
-| `SBX_EXCHANGE`, `SBX_TAKE_DEST` | the file exchange, and where `og give` and `og take` look |
-| `SBX_SSH_DIR`, `SBX_SKILLS_STORE`, `SBX_APPA_LOCK` | where the ssh keys, sbx's skills store and the OpenAPPA pin are, if not the defaults |
-| `SBX_OGUN_DIR`, `SBX_SECRETS_APPROVED`, `SBX_EGRESS_APPROVED` | og's own state: records, approvals |
-| `SBX_RM_PROBE_TIMEOUT`, `SBX_RM_BOOT_TIMEOUT`, `SBX_CLAUDE_UPDATE_TIMEOUT`, `SBX_CLAUDE_UPDATE_LOG` | timeouts, and where the Claude Code update logs |
+| `vault` | the 1Password vault their tokens and secrets live in |
+| `projects` | their project folders, per-owner or one owner each |
+| `token_name`, `token_suffix` | how their token items are named, and which a Mac may use |
+| `github_owners` | the GitHub account behind a project folder whose name differs, for `og token`'s form |
+| `protected_keys` | the keys that must never go into a sandbox: a commit-signing key, git's `allowed_signers`, say |
+| `provision` | the command that sets up each sandbox (their own setup script) |
+| `skills_dir` | the skills folder mirrored into sbx's skills store |
+| `host_ro_mounts` | host folders every sandbox reads (none by default; a folder of shared settings, say) |
+| `apt_tools` | apt tools beyond og's own, in every sandbox and template |
+| `exchange`, `take_dest` | the file exchange, and where `og give` and `og take` look |
 
 ## Make sandboxes your own
 

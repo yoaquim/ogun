@@ -10,14 +10,14 @@ import shlex
 import tarfile
 from pathlib import Path
 
-from ogun.core import config, log, paths, sbx, settings
+from ogun.core import config, log, paths, sbx
 
 REPO = "https://github.com/archestra-ai/OpenAPPA"
 EGRESS = "release-assets.githubusercontent.com"   # where a GitHub release download lands; github.com is in the baseline
 
 
 def lock_file() -> Path:
-    return settings.path("SBX_APPA_LOCK", config.file("appa.lock"))
+    return config.file("appa.lock")
 
 
 def lock(key: str) -> str:
@@ -80,7 +80,7 @@ def bundle() -> str:
 def runner(provision: str) -> str:
     """The shell that unpacks the bundle into a fresh private folder, runs the
     script it's given ($0), and removes the folder: nothing is left for a later
-    run to trust. provision: og's provision command (SBX_PROVISION), which
+    run to trust. provision: og's provision command (provision), which
     activate.sh runs again once its marker is written; none, and it does without."""
     return (f"OGUN_PROVISION={shlex.quote(provision)} "
             'd=$(mktemp -d) && base64 -d | tar -xzf - -C "$d" && OGUN_PROVISION=$OGUN_PROVISION bash "$d/$0" "$@"; '

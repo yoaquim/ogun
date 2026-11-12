@@ -92,8 +92,7 @@ def world(home, registry, monkeypatch):
     for d in ("personal/orders", "initech/orders", "personal/loose", "personal/bad", "personal/clash",
               "personal/same", "personal/plain", "personal/orders/sub/orders"):
         (home / "Projects" / d).mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("SBX_VAULT", "Sandbox")
-    monkeypatch.delenv("SBX_SECRETS_APPROVED", raising=False)
+    monkeypatch.setenv("OG_VAULT", "Sandbox")
     # not a terminal, and full of yes: no pipe, file or setting can approve a grant
     monkeypatch.setattr(sys, "stdin", io.StringIO("y\n" * 8))
     w = World(home, registry)
@@ -322,7 +321,7 @@ def test_an_approval_is_for_its_vault_the_same_item_in_another_vault_is_asked_ag
     approval.approved(world.dir("personal/orders"))
     assert world.approvals.read_text().splitlines()[1].endswith("\tSandbox")
     monkeypatch.setattr(sys, "stdin", io.StringIO(""))
-    monkeypatch.setenv("SBX_VAULT", "Other")
+    monkeypatch.setenv("OG_VAULT", "Other")
     capfd.readouterr()
     assert approval.approved(world.dir("personal/orders")) == []
     assert "op://Other/orders-staging-key/credential" in capfd.readouterr().err

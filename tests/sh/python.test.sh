@@ -167,15 +167,15 @@ expect_cmd 0 "one format per kind of value: sizes (7 B, 12 KB, 1.2 MB), paths un
 no_spinner() { [ -z "$(pyrun 'from ogun.core import log
 with log.waiting("x"): pass' 2>&1)" ]; }
 expect_cmd 0 "…and a spinner only on a terminal: piped, waiting prints nothing" no_spinner
-rotate() { local d; d=$(mktemp -d); [ "$(SBX_OGUN_DIR="$d" pyrun 'from ogun.core import changes, log
+rotate() { local d; d=$(mktemp -d); [ "$(XDG_STATE_HOME="$d" pyrun 'from ogun.core import changes, log
 log.RECORD_MAX = 50
 for i in range(4): log.record(f"change {i}")
 print(*[e["what"] for e in changes.entries()], sep=",")')" = "change 2,change 3" ]; }
 expect_cmd 0 "the record moves to og.log.1 past its size (one older file kept), and og log reads both, oldest first" rotate
-race() { local d; d=$(mktemp -d)
+race() { local d; d=$(mktemp -d); mkdir -p "$d/ogun"
   # the test holds og.log.lock, as another og command mid-write would: a record must
   # wait for it (so no two rotate at once), and land once it's let go
-  SBX_OGUN_DIR="$d" pyrun 'import fcntl, subprocess, sys, time, os
+  XDG_STATE_HOME="$d" pyrun 'import fcntl, subprocess, sys, time, os
 from ogun.core import log
 lock = open(log.record_file().with_name("og.log.lock"), "a"); fcntl.flock(lock, fcntl.LOCK_EX)
 w = subprocess.Popen([sys.executable, "-I", "-c", "import sys; sys.path.insert(0, sys.argv[1]); from ogun.core import log; log.record(\"waited\")", sys.argv[1]])
@@ -204,7 +204,7 @@ log.warn(f"  {log.WARNING} fix it: {log.cmd('og rm cub --force')}")
 PY
 }
 expect_cmd 0 "a command inside a message is bold, og's color, on a terminal, the sentence around it its own color" cmd_pretty
-cmd_plain() { local o d; d=$(mktemp -d); o=$(SBX_OGUN_DIR="$d" pyrun 'from ogun.core import changes, log
+cmd_plain() { local o d; d=$(mktemp -d); o=$(XDG_STATE_HOME="$d" pyrun 'from ogun.core import changes, log
 log.warn("fix it: " + log.cmd("og rm cub --force"))
 log.record("ran " + log.cmd("og policy"))
 print(changes.entries()[-1]["what"])' 2>&1)
@@ -212,10 +212,10 @@ print(changes.entries()[-1]["what"])' 2>&1)
 expect_cmd 0 "…piped, the bare words, and the record stores them bare too" cmd_plain
 no_marks_leak() { ! "$OG" style 2>&1 | LC_ALL=C grep -q $'\xee\x80[\x80\x81]'; }
 expect_cmd 0 "…and no command mark ever reaches piped output" no_marks_leak
-views() { local d o; d=$(mktemp -d)
+views() { local d o; d=$(mktemp -d); mkdir -p "$d/ogun"
   printf '%s\n' '{"t":"2026-10-27T09:12:44","cmd":"og allow fern x.example.com --read-only","what":"fern may reach x.example.com (reading only)"}' \
-    '{"t":"2026-10-28T14:07:51","cmd":"og rm fern --force","what":"fern removed"}' > "$d/og.log"
-  o=$(SBX_OGUN_DIR="$d" "$PY" -I - "$OGUN/src" 2>&1 <<'PY'
+    '{"t":"2026-10-28T14:07:51","cmd":"og rm fern --force","what":"fern removed"}' > "$d/ogun/og.log"
+  o=$(XDG_STATE_HOME="$d" "$PY" -I - "$OGUN/src" 2>&1 <<'PY'
 import sys; sys.path.insert(0, sys.argv[1])
 import os; os.environ["OGUN_VERBOSE"] = "1"
 from ogun.core import changes, log
@@ -344,13 +344,13 @@ expect_cmd 0 "piped, nothing is colored: the plain words the tests grep" plain_p
 # ── the sandbox names tab completion reads, kept by og's sbx gateway (sbx.py) ──
 names_kept() { local d="$FIX/names-state" b="$FIX/names-bin"; rm -rf "$d"; mkdir -p "$b"
   printf '#!/bin/sh\n[ "$1" = ls ] && printf "SANDBOX  AGENT  STATUS\\nalpha  claude  running\\nbeta  claude  stopped\\n"\nexit 0\n' > "$b/sbx"; chmod +x "$b/sbx"
-  PATH="$b:$PATH" SBX_OGUN_DIR="$d" pyrun 'from ogun.core import sbx; sbx.ls()' || return 1
-  [[ "$(cat "$d/sandbox-names")" == $'alpha\nbeta' ]] || return 1
-  PATH="$b:$PATH" SBX_OGUN_DIR="$d" pyrun 'from ogun.core import sbx; sbx.run("rm", "alpha", "--force")' || return 1
-  [[ "$(cat "$d/sandbox-names")" == beta ]] || return 1
+  PATH="$b:$PATH" XDG_STATE_HOME="$d" pyrun 'from ogun.core import sbx; sbx.ls()' || return 1
+  [[ "$(cat "$d/ogun/sandbox-names")" == $'alpha\nbeta' ]] || return 1
+  PATH="$b:$PATH" XDG_STATE_HOME="$d" pyrun 'from ogun.core import sbx; sbx.run("rm", "alpha", "--force")' || return 1
+  [[ "$(cat "$d/ogun/sandbox-names")" == beta ]] || return 1
   # a listing that failed changes nothing
   printf '#!/bin/sh\nexit 1\n' > "$b/sbx"
-  PATH="$b:$PATH" SBX_OGUN_DIR="$d" pyrun 'from ogun.core import sbx; sbx.ls()'; [[ "$(cat "$d/sandbox-names")" == beta ]]; }
+  PATH="$b:$PATH" XDG_STATE_HOME="$d" pyrun 'from ogun.core import sbx; sbx.ls()'; [[ "$(cat "$d/ogun/sandbox-names")" == beta ]]; }
 expect_cmd 0 "og keeps the names completion offers: each sbx ls writes them, an sbx rm drops one, a failed ls changes nothing" names_kept
 
 # ── og itself, as a person or a script runs it ──

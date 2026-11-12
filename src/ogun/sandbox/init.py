@@ -32,7 +32,7 @@ def too_broad(d: str, tl: str = "") -> str:
     if d == "/" or d == h or h.startswith(d + "/"):
         return "it holds your whole home"
     if any(d == p or p.startswith(d + "/") for p, _ in roots):
-        return "it holds every project (a project folder: SBX_PROJECTS)"
+        return "it holds every project (a project folder: projects)"
     if ex and (d == ex or d.startswith(ex + "/") or ex.startswith(d + "/")):
         return "it is the file exchange, or holds it"
     if any(owner is None and os.path.dirname(d) == p for p, owner in roots) and d != tl:

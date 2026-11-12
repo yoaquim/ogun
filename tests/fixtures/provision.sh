@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# A stand-in provision command (SBX_PROVISION) for og's OpenAPPA tests: one that sets up
+# A stand-in provision command (provision) for og's OpenAPPA tests: one that sets up
 # a claude config, as a provision command might. With OpenAPPA's marker
 # (~/.config/ogun/appa) its skills are a folder OpenAPPA can add to, without it one link;
 # a status line of its own is at og's hook (~/.config/ogun/appa-statusline) for clappa to

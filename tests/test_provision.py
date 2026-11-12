@@ -1,7 +1,7 @@
 """Provisioning: what og does to a new sandbox beyond its own setup is settings, each
-unset by default. SBX_PROVISION: a command run inside it at create and on every
-attach. SBX_SKILLS_DIR: a folder mirrored into sbx's shared skills store. A host
-folder to mount read-only (a team's agent config, say) is an entry in SBX_HOST_RO_MOUNTS.
+unset by default. provision: a command run inside it at create and on every
+attach. skills_dir: a folder mirrored into sbx's shared skills store. A host
+folder to mount read-only (a team's agent config, say) is an entry in host_ro_mounts.
 Unset, og does none of it and says so once."""
 
 import pytest
@@ -14,8 +14,8 @@ from ogun.secrets import sshkeys
 @pytest.fixture
 def box(fakes, home, monkeypatch):
     """Sandbox box, reaching no agent, with no key folder; nothing said yet."""
-    monkeypatch.setenv("SBX_SSH_DIR", str(home / "ssh"))
-    monkeypatch.setenv("SBX_EXCHANGE", str(home / "exchange"))
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: home / "ssh")
+    monkeypatch.setenv("OG_EXCHANGE", str(home / "exchange"))
     monkeypatch.setattr(config, "_said", set())
     fakes.sbx.answer(["exec", "box"], stdout="agent:none\n", has=sshkeys.PROBE)
     return fakes.sbx
@@ -30,25 +30,25 @@ def provisions(s) -> list[list[str]]:
 def test_unset_setup_runs_no_provision_command_and_says_so_once(box, capfd):
     assert base.setup("box") and base.setup("box")
     assert provisions(box) == []
-    assert "".join(capfd.readouterr()).count("no provision command (SBX_PROVISION)") == 1
+    assert "".join(capfd.readouterr()).count("no provision command (provision)") == 1
 
 
 def test_set_it_runs_inside_the_sandbox_a_leading_tilde_your_macs_home(box, home, monkeypatch):
-    monkeypatch.setenv("SBX_PROVISION", "~/setup-repo/run-me --all")
+    monkeypatch.setenv("OG_PROVISION", "~/setup-repo/run-me --all")
     assert base.setup("box")
     assert [c[4] for c in provisions(box)] == [f"{home}/setup-repo/run-me --all"]
 
 
 def test_a_failing_provision_command_stops_setup_nothing_after_it_runs(box, monkeypatch, capfd):
-    monkeypatch.setenv("SBX_PROVISION", "run-me")
+    monkeypatch.setenv("OG_PROVISION", "run-me")
     box.answer(["exec", "box"], code=1, has="run-me")
     assert base.setup("box") is False
-    assert "the provision command failed (SBX_PROVISION)" in "".join(capfd.readouterr())
+    assert "the provision command failed (provision)" in "".join(capfd.readouterr())
     assert not any("sandbox-docker.sh" in " ".join(c) for c in box.calls)
 
 
 def test_every_attach_runs_it_again_and_a_failure_only_warns(box, monkeypatch, capfd):
-    monkeypatch.setenv("SBX_PROVISION", "run-me")
+    monkeypatch.setenv("OG_PROVISION", "run-me")
     box.answer(["exec", "box"], code=1, has="run-me")
     session.upkeep("box", "", existed=True)
     assert len(provisions(box)) == 1
@@ -85,7 +85,7 @@ def test_unset_an_attach_runs_none(box):
 @pytest.fixture
 def skills(home, monkeypatch):
     monkeypatch.setattr(config, "_said", set())
-    monkeypatch.setenv("SBX_SKILLS_STORE", str(home / "store"))
+    monkeypatch.setattr("ogun.sandbox.create.skills_store", lambda: home / "store")
     (home / "my-skills/outline").mkdir(parents=True)
     (home / "my-skills/outline/SKILL.md").write_text("outline\n")
     yield home
@@ -96,25 +96,25 @@ def skills(home, monkeypatch):
 def test_unset_no_skills_are_mirrored_said_once_and_a_create_goes_on(skills, capfd):
     assert create.skills() and create.skills()
     assert not (skills / "store").exists()
-    assert "".join(capfd.readouterr()).count("no skills folder (SBX_SKILLS_DIR)") == 1
+    assert "".join(capfd.readouterr()).count("no skills folder (skills_dir)") == 1
 
 
 def test_set_that_folder_is_mirrored_a_leading_tilde_home(skills, monkeypatch):
-    monkeypatch.setenv("SBX_SKILLS_DIR", "~/my-skills")
+    monkeypatch.setenv("OG_SKILLS_DIR", "~/my-skills")
     assert create.skills() and (skills / "store/outline/SKILL.md").read_text() == "outline\n"
 
 
 def test_a_skills_folder_that_isnt_there_fails_it(skills, monkeypatch, capfd):
-    monkeypatch.setenv("SBX_SKILLS_DIR", "~/none")
-    assert create.skills() is False and "SBX_SKILLS_DIR" in "".join(capfd.readouterr())
+    monkeypatch.setenv("OG_SKILLS_DIR", "~/none")
+    assert create.skills() is False and "skills_dir" in "".join(capfd.readouterr())
 
 
 def test_og_skills_with_none_set_says_so_and_fails(og, skills):
     code, out, err = og("skills")
-    assert code == 1 and "SBX_SKILLS_DIR" in out + err
+    assert code == 1 and "skills_dir" in out + err
 
 
-# ── a host folder's mount: an entry in SBX_HOST_RO_MOUNTS, nothing of its own ──
+# ── a host folder's mount: an entry in host_ro_mounts, nothing of its own ──
 
 def env(home, d=None):
     from ogun.exchange import folders
@@ -124,13 +124,13 @@ def env(home, d=None):
 
 def test_no_host_folder_mount_unless_the_read_only_mounts_name_it(home, monkeypatch):
     (home / "agent-config").mkdir()
-    monkeypatch.setenv("SBX_HOST_RO_MOUNTS", str(home / "reference"))
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", str(home / "reference"))
     assert not any("agent-config" in x for x in env(home))
 
 
 def test_named_with_a_leading_tilde_it_mounts_read_only(home, monkeypatch):
     (home / "agent-config").mkdir()
-    monkeypatch.setenv("SBX_HOST_RO_MOUNTS", "~/agent-config")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/agent-config")
     lines = env(home)
     i = lines.index(f'  - path: "{home}/agent-config"')
     assert lines[i + 1] == "    readOnly: true"
@@ -138,5 +138,5 @@ def test_named_with_a_leading_tilde_it_mounts_read_only(home, monkeypatch):
 
 def test_a_workspace_that_is_one_of_them_is_mounted_once(home, monkeypatch):
     (home / "agent-config").mkdir()
-    monkeypatch.setenv("SBX_HOST_RO_MOUNTS", "~/agent-config")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/agent-config")
     assert sum("agent-config" in x for x in env(home, d=str(home / "agent-config"))) == 1

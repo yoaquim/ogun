@@ -60,12 +60,12 @@ def test_a_create_stops_at_the_check_before_writing_anything(fakes, home, capfd)
 
 
 def test_a_create_that_could_not_name_its_token_item_refuses_before_anything_is_made(recipes, stub, capfd):
-    # no profile and no SBX_TOKEN_NAME: the token step at the end could name no item,
+    # no profile and no token_name: the token step at the end could name no item,
     # so the sandbox would be made, set up, and left without a token
     ok, d, calls = made(recipes, stub, None, name="no-name")
     out = "".join(capfd.readouterr())
     assert not ok and not any(c[:2] == ["env", "create"] for c in calls) and not (d / ".sbxenv.yaml").exists()
-    assert "SBX_TOKEN_NAME" in out and "profile" in out and "nothing was made" in out
+    assert "token_name" in out and "profile" in out and "nothing was made" in out
 
 
 def test_but_a_create_given_its_item_needs_no_name_for_it(recipes, stub):
@@ -75,7 +75,7 @@ def test_but_a_create_given_its_item_needs_no_name_for_it(recipes, stub):
 
 @pytest.fixture(autouse=True)
 def _no_ssh(home, monkeypatch):
-    monkeypatch.setenv("SBX_SSH_DIR", str(home / "ssh"))
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: home / "ssh")
 
 
 # ── which template a create picks: the repo's, then this Mac's, then sbx's default ──
@@ -259,7 +259,7 @@ def test_host_read_only_mounts_a_glob_mounts_every_match_a_missing_entry_is_skip
     f = recipes / "hfonts"
     for x in ("user", "assets/Font8", "assets/Font9"):
         (f / x).mkdir(parents=True)
-    monkeypatch.setenv("SBX_HOST_RO_MOUNTS", f"{f}/user:{f}/assets/Font*:{f}/absent")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", f"{f}/user:{f}/assets/Font*:{f}/absent")
     ok, d, _ = made(recipes, stub, "home")
     lines = yaml(d)
     assert ok and all(read_only(lines, f / x) for x in ("user", "assets/Font8", "assets/Font9"))
@@ -293,7 +293,7 @@ def test_and_every_mount_its_sbxenv_named_in_order_read_only_or_not(recipes, stu
     assert ok
     m = rec("rec-desk")["mounts"]
     cfg, out = str(recipes / "agent-config"), str(recipes / "exchange/boxes/rec-desk/out")
-    assert next(x for x in m if x["path"] == cfg)["read_only"] is True   # a host mount, as SBX_HOST_RO_MOUNTS names it
+    assert next(x for x in m if x["path"] == cfg)["read_only"] is True   # a host mount, as host_ro_mounts names it
     assert next(x for x in m if x["path"] == out)["read_only"] is False
     assert len(m) == sum(x.startswith("  - path: ") for x in yaml(d))
 
@@ -411,7 +411,7 @@ def test_a_create_that_stops_early_makes_no_sandbox_and_no_record(recipes, stub,
     ok, _, calls = made(recipes, stub, "work", name="rec-early", images=("ogun-work",))
     assert not ok and not [c for c in calls if c[:2] == ["env", "create"]] and rec("rec-early") is None
     (recipes / "exchange/boxes").unlink()
-    monkeypatch.setenv("SBX_SKILLS_STORE", "/dev/null/store")   # the skills mirror can't write its store
+    monkeypatch.setattr("ogun.sandbox.create.skills_store", lambda: Path("/dev/null/store"))   # the skills mirror can't write its store
     ok, _, calls = made(recipes, stub, "work", name="rec-early2", images=("ogun-work",))
     assert not ok and not [c for c in calls if c[:2] == ["env", "create"]] and rec("rec-early2") is None
 
@@ -492,7 +492,7 @@ def test_never_in_a_folder_too_broad_to_be_a_workspace(recipes, ask, capfd, wher
 def test_every_project_folder_is_too_broad_and_so_is_a_per_owner_ones_owner_folder(recipes, monkeypatch, where, why):
     # Work: fixed to acme, so a folder right in it is one repo, not an owner's folder;
     # dev holds the second per-owner folder
-    monkeypatch.setenv("SBX_PROJECTS", f"{recipes}/Code:{recipes}/Work=acme:{recipes}/dev/More")
+    monkeypatch.setenv("OG_PROJECTS", f"{recipes}/Code:{recipes}/Work=acme:{recipes}/dev/More")
     d = recipes / where
     d.mkdir(parents=True, exist_ok=True)
     got = init.too_broad(str(d.resolve()))

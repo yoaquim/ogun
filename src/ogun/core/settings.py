@@ -1,7 +1,7 @@
 """og's settings: ~/.config/ogun/config.toml ($XDG_CONFIG_HOME/ogun/config.toml when
-that's set), one `NAME = value` a line, each overridden by an environment variable
-of the same name (docs/appendix/flags-and-env.md). A name neither sets reads as "",
-and its reader holds the default. A file og can't take as its settings is an error,
+that's set), one `name = value` a line, each overridden by the environment variable
+OG_<NAME> (docs/appendix/flags-and-env.md). A name neither sets reads as "", and its
+reader holds the default. A file og can't take as its settings is an error,
 never skipped: a misread vault name or a typo'd key would otherwise fall back to the
 default without a word.
 
@@ -15,12 +15,15 @@ import tomllib
 from pathlib import Path
 
 NAMES = (
-    "SBX_VAULT", "SBX_PROJECTS", "SBX_OGUN_DIR", "SBX_EXCHANGE",
-    "SBX_TAKE_DEST", "SBX_SSH_DIR", "SBX_SKILLS_STORE", "SBX_HOST_RO_MOUNTS", "SBX_APPA_LOCK",
-    "SBX_SECRETS_APPROVED", "SBX_EGRESS_APPROVED", "SBX_RM_PROBE_TIMEOUT", "SBX_RM_BOOT_TIMEOUT",
-    "SBX_CLAUDE_UPDATE_TIMEOUT", "SBX_CLAUDE_UPDATE_LOG", "SBX_TOKEN_NAME", "SBX_TOKEN_SUFFIX",
-    "SBX_PROVISION", "SBX_SKILLS_DIR", "SBX_GITHUB_OWNERS", "SBX_PROTECTED_KEYS", "SBX_APT_TOOLS",
+    "vault", "projects", "exchange", "take_dest", "token_name", "token_suffix", "github_owners",
+    "protected_keys", "provision", "skills_dir", "host_ro_mounts", "apt_tools",
 )
+BASELINE_KEYS = ("domains", "http", "default_rules_off")
+
+
+def env_name(name: str) -> str:
+    """The environment variable that overrides a setting: OG_ and its name in capitals."""
+    return "OG_" + name.upper()
 PROFILE_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}")
 
 
@@ -48,8 +51,25 @@ def _settings(d: dict, where: str, prefix: str = "") -> dict[str, str]:
     return out
 
 
-def _parsed() -> tuple[dict[str, str], dict[str, dict[str, str]]]:
-    """The shared settings and each profile's own."""
+def _baseline(b, where: str) -> dict[str, list[str]] | None:
+    """The [baseline] table: each of its three keys a list of text. None when there is none."""
+    if b is None:
+        return None
+    if not isinstance(b, dict):
+        raise Unreadable(f"{where}: baseline must be a [baseline] table")
+    for k, v in b.items():
+        if k not in BASELINE_KEYS:
+            raise Unreadable(f"{where}: baseline.{k} isn't a key the baseline has ({', '.join(BASELINE_KEYS)})")
+        if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+            raise Unreadable(f"{where}: baseline.{k} must be a list of text")
+    missing = [k for k in BASELINE_KEYS if k not in b]
+    if missing:
+        raise Unreadable(f"{where}: [baseline] has no {', '.join(missing)} (an empty list is {missing[0]} = [])")
+    return {k: list(b[k]) for k in BASELINE_KEYS}
+
+
+def _parsed() -> tuple[dict[str, str], dict[str, dict[str, str]], dict[str, list[str]] | None]:
+    """The shared settings, each profile's own, and the [baseline] table."""
     # read whole on every lookup: settings are few and read rarely, and a cache
     # would outlive a test's (or a person's) edit to the file
     f = file()
@@ -57,13 +77,14 @@ def _parsed() -> tuple[dict[str, str], dict[str, dict[str, str]]]:
     try:
         text = f.read_bytes().decode()
     except FileNotFoundError:
-        return {}, {}
+        return {}, {}, None
     except (OSError, UnicodeDecodeError) as e:
         raise Unreadable(f"can't read {where}: {getattr(e, 'strerror', None) or e}") from None
     try:
         d = tomllib.loads(text)
     except tomllib.TOMLDecodeError as e:
         raise Unreadable(f"{where} isn't valid TOML: {e}") from None
+    base = _baseline(d.pop("baseline", None), where)
     profs = d.pop("profiles", {})
     if not isinstance(profs, dict):
         raise Unreadable(f"{where}: profiles must be [profiles.<name>] sections")
@@ -72,7 +93,7 @@ def _parsed() -> tuple[dict[str, str], dict[str, dict[str, str]]]:
         if not isinstance(p, dict):
             raise Unreadable(f"{where}: profiles.{name} must be a [profiles.{name}] section of settings")
         out[name] = _settings(p, where, f"profiles.{name}.")
-    return _settings(d, where), out
+    return _settings(d, where), out, base
 
 
 def shared() -> dict[str, str]:
@@ -109,29 +130,31 @@ def profile() -> str:
 
 
 def _read() -> dict[str, str]:
-    shared, profs = _parsed()
+    shared, profs, _ = _parsed()
     p = profile()
     return {**shared, **profs.get(p, {})} if p else shared
 
 
 def get(name: str) -> str:
-    """The setting: its environment variable when that's set and not empty, else
-    the file's, else "". The file is read either way, so a broken one always stops og."""
+    """The setting: OG_<NAME> when that's set and not empty, else the file's, else "".
+    The file is read either way, so a broken one always stops og."""
+    if name not in NAMES:
+        raise KeyError(f"{name} isn't one of og's settings")
     from_file = _read()
-    return os.environ.get(name) or from_file.get(name, "")
+    return os.environ.get(env_name(name)) or from_file.get(name, "")
+
+
+def baseline() -> dict[str, list[str]] | None:
+    """config.toml's [baseline] table, its three lists; None when it has none."""
+    return _parsed()[2]
 
 
 def vault() -> str:
-    """The 1Password vault og reads its token items and secret grants from: SBX_VAULT,
-    else Sandbox."""
-    return get("SBX_VAULT") or "Sandbox"
+    """The 1Password vault og reads its token items and secret grants from: the vault
+    setting, else Sandbox."""
+    return get("vault") or "Sandbox"
 
 
 def path(name: str, default: Path) -> Path:
     v = get(name)
     return Path(v).expanduser() if v else default
-
-
-def seconds(name: str, default: int) -> int:
-    v = get(name)
-    return int(v) if v.isdigit() else default

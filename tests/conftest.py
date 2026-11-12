@@ -130,10 +130,10 @@ def nothing_of_yours(tmp_path, monkeypatch):
     and none of the runner's settings or terminal: a test that forgets home writes no log line or
     name list into the real ones. The home fixture builds its fuller one over this."""
     from ogun.core import settings
-    for n in (*settings.NAMES, "XDG_CONFIG_HOME"):
+    for n in (*map(settings.env_name, settings.NAMES), "XDG_CONFIG_HOME"):
         monkeypatch.delenv(n, raising=False)
     monkeypatch.setenv("HOME", str(tmp_path / "no-home"))
-    monkeypatch.setenv("SBX_OGUN_DIR", str(tmp_path / "no-home/.config/sbx/ogun"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "no-home/.local/state"))
     # nor the runner's terminal: TERM=dumb or NO_COLOR would turn off the colors a test forces
     monkeypatch.setenv("TERM", "xterm-256color")
     monkeypatch.delenv("NO_COLOR", raising=False)
@@ -148,7 +148,7 @@ def no_profile_of_yours(monkeypatch):
 
 # two Macs' profiles in one config.toml: home naming its tokens, work using only
 # -work tokens
-MAC_PROFILES = '[profiles.home]\nSBX_TOKEN_NAME = "desk"\n\n[profiles.work]\nSBX_TOKEN_SUFFIX = "-work"\n'
+MAC_PROFILES = '[profiles.home]\ntoken_name = "desk"\n\n[profiles.work]\ntoken_suffix = "-work"\n'
 
 
 def use_profile(home: Path, name: str | None) -> None:
@@ -170,15 +170,15 @@ def home(tmp_path, monkeypatch) -> Path:
     inside it, so nothing reads or writes the real ones; no other setting set, and
     no file in the config folder until a test writes one."""
     h = tmp_path / "home"
-    for d in (".config/sbx/ogun", ".config/ogun", "Projects"):
+    for d in (".local/state/ogun", ".config/ogun", "Projects"):
         (h / d).mkdir(parents=True)
     # no setting, and no settings file, from whoever runs the tests
     from ogun.core import settings
-    for n in (*settings.NAMES, "XDG_CONFIG_HOME", "OG_PROFILE"):
+    for n in (*map(settings.env_name, settings.NAMES), "XDG_CONFIG_HOME", "OG_PROFILE"):
         monkeypatch.delenv(n, raising=False)
     monkeypatch.setenv("HOME", str(h))
-    monkeypatch.setenv("SBX_OGUN_DIR", str(h / ".config/sbx/ogun"))
-    monkeypatch.setenv("SBX_PROJECTS", str(h / "Projects"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(h / ".local/state"))
+    monkeypatch.setenv("OG_PROJECTS", str(h / "Projects"))
     yield h
     # writable again: a test may lock a folder (a skills store), and pytest can't clear
     # a read-only folder from its old runs, so they'd pile up
@@ -344,14 +344,15 @@ def recipes(home, registry, fakes, real_git, monkeypatch):
     (home / "agent-config/skills/one/SKILL.md").write_text("skill\n")
     for d in ("initech/printer/sub/printer", "personal/printer", "personal/loose", "personal/plain", "personal/odd"):
         (home / "Projects" / d).mkdir(parents=True)
-    for k, v in (("SBX_EXCHANGE", "exchange"), ("SBX_SSH_DIR", "no-ssh"), ("SBX_SKILLS_STORE", "skills-store")):
-        monkeypatch.setenv(k, str(home / v))
+    monkeypatch.setenv("OG_EXCHANGE", str(home / "exchange"))
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: home / "no-ssh")
+    monkeypatch.setattr("ogun.sandbox.create.skills_store", lambda: home / "skills-store")
     # a team's agent config: its setup run in every sandbox, its skills, and the folder mounted
-    monkeypatch.setenv("SBX_PROVISION", "~/agent-config/provision.sh --all")
-    monkeypatch.setenv("SBX_SKILLS_DIR", "~/agent-config/skills")
-    monkeypatch.setenv("SBX_HOST_RO_MOUNTS", f"~/agent-config:{home / 'reference'}")
+    monkeypatch.setenv("OG_PROVISION", "~/agent-config/provision.sh --all")
+    monkeypatch.setenv("OG_SKILLS_DIR", "~/agent-config/skills")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", f"~/agent-config:{home / 'reference'}")
     (home / "exchange").mkdir()
-    monkeypatch.setenv("SBX_VAULT", "Sandbox")
+    monkeypatch.setenv("OG_VAULT", "Sandbox")
     fakes.curl.answer([], code=1)
     return home
 

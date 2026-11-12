@@ -55,7 +55,7 @@ printf '#!/bin/sh\necho "$*" >> "%s/sbx.calls"\n[ "$1" = ls ] && printf "SANDBOX
 # finds missing in front, never reaches the sbx on this Mac
 core() { local out
   out=$(cd "$TEST_TMP/home" && env -i HOME="$TEST_TMP/home" XDG_CONFIG_HOME="$TEST_TMP/home/.config" TMPDIR="$TMPDIR" \
-        SBX_OGUN_DIR="$SBX_OGUN_DIR" SBX_EXCHANGE="$SBX_EXCHANGE" \
+        XDG_STATE_HOME="$XDG_STATE_HOME" OG_EXCHANGE="$OG_EXCHANGE" \
         PATH="$TEST_TMP/onpath:$TEST_TMP/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin" og "$@" 2>&1) || { echo "$out"; return 1; }
   echo "$out"; ! grep -q Traceback <<<"$out"; }
 export -f core

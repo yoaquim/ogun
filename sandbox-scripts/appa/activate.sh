@@ -16,7 +16,7 @@
 set -euo pipefail
 v=$1 ws=$2; shift 2
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # og's bundle, unpacked for this run
-prov=${OGUN_PROVISION:-}   # og's provision command (SBX_PROVISION); set by og's runner, never the sandbox's own
+prov=${OGUN_PROVISION:-}   # og's provision command (provision); set by og's runner, never the sandbox's own
 data=$HOME/.local/share/appa conf=$HOME/.config/appa marker=$HOME/.config/ogun/appa
 fail() { echo "activate: $*" >&2; exit 1; }
 

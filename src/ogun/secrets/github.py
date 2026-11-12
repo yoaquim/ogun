@@ -22,38 +22,38 @@ _TOKEN_RE = re.compile(r"[a-z0-9][a-z0-9-]*")
 
 def _plain(v: str, src: str = "") -> str:
     if v and not _TOKEN_RE.fullmatch(v):
-        raise settings.Unreadable(f"{src or 'SBX_TOKEN_NAME'} '{v}' isn't a plain word (a-z, 0-9, -): it ends 1Password "
-                                  "item names" + (" (set SBX_TOKEN_NAME in that profile)" if src else ""))
+        raise settings.Unreadable(f"{src or 'token_name'} '{v}' isn't a plain word (a-z, 0-9, -): it ends 1Password "
+                                  "item names" + (" (set token_name in that profile)" if src else ""))
     return v
 
 
 def token_name() -> str:
-    """The ending of this Mac's own items (github-pat-<owner>-<it>): SBX_TOKEN_NAME,
+    """The ending of this Mac's own items (github-pat-<owner>-<it>): token_name,
     else the profile's name; "" with neither."""
-    return _plain(settings.get("SBX_TOKEN_NAME") or settings.profile())
+    return _plain(settings.get("token_name") or settings.profile())
 
 
 def endings() -> list[str]:
     """Every ending an item of this vault may have: this Mac's, then each
-    profile's as that profile reads it (its own SBX_TOKEN_NAME, else the shared
+    profile's as that profile reads it (its own token_name, else the shared
     one, else its name), once each. Two where one ends the other (home-work,
     work) stop og: github-pat-foo-home-work would name two owners."""
-    common = settings.shared().get("SBX_TOKEN_NAME", "")
+    common = settings.shared().get("token_name", "")
     # its own setting, even an empty one, wins over the shared one, as the merge in settings does
-    out = [token_name()] + [_plain(p.get("SBX_TOKEN_NAME", common) or name, f"profile '{name}' (its token name)")
+    out = [token_name()] + [_plain(p.get("token_name", common) or name, f"profile '{name}' (its token name)")
                             for name, p in settings.profiles().items()]
     out = list(dict.fromkeys(e for e in out if e))
     for a in out:
         for b in out:
             if a.endswith("-" + b):
                 raise settings.Unreadable(f"token item endings {a} and {b} overlap: github-pat-<owner>-{a} could be "
-                                          f"<owner>-{a[:-len(b) - 1]}'s {b} token; give one profile another SBX_TOKEN_NAME")
+                                          f"<owner>-{a[:-len(b) - 1]}'s {b} token; give one profile another token_name")
     return out
 
 
 def token_suffix() -> str:
     """The ending every item this Mac uses must have; "" for any."""
-    return settings.get("SBX_TOKEN_SUFFIX")
+    return settings.get("token_suffix")
 
 
 def item(owner: str) -> str:
@@ -61,14 +61,14 @@ def item(owner: str) -> str:
     t = token_name()
     if not t:
         raise settings.Unreadable("og can't name this Mac's token items: choose a profile (OG_PROFILE, or "
-                                  "~/.config/ogun/profile) or set SBX_TOKEN_NAME")
+                                  "~/.config/ogun/profile) or set token_name")
     return f"github-pat-{owner}-{t}"
 
 
 def items(owner: str) -> list[str]:
     """Every item that may hold this owner's token on this Mac, best first: its
     own, then the other profiles' endings (an owner may have a token for one Mac only),
-    each ending in SBX_TOKEN_SUFFIX when that's set (unset: any)."""
+    each ending in token_suffix when that's set (unset: any)."""
     if not owner:
         return []
     own = item(owner)
@@ -131,7 +131,7 @@ def item_owner(it: str) -> str | None:
 
 def vault_items() -> list[str]:
     """The vault's github-pat-* items this Mac may use, sorted: every one, or
-    only those ending in SBX_TOKEN_SUFFIX when that's set. 1Password locked, not signed
+    only those ending in token_suffix when that's set. 1Password locked, not signed
     in, or no such vault: none (op printed nothing). One unlock."""
     try:
         p = subprocess.run(["op", "item", "list", "--vault", vault(), "--format", "json"],
@@ -157,8 +157,8 @@ def pick_item() -> str:
     if not its:
         # say why there is nothing to pick, or the caller's "no token picked" is all there is
         if not endings():
-            log.err("og: no profile and no SBX_TOKEN_NAME, so og can't tell which items are this Mac's token items; "
-                    "choose a profile (OG_PROFILE, or ~/.config/ogun/profile) or set SBX_TOKEN_NAME")
+            log.err("og: no profile and no token_name, so og can't tell which items are this Mac's token items; "
+                    "choose a profile (OG_PROFILE, or ~/.config/ogun/profile) or set token_name")
         else:
             log.err(f"og: the vault '{vault()}' holds no github-pat-* item this Mac may use, or 1Password is locked "
                     "or not signed in; mint one with og token <owner>")

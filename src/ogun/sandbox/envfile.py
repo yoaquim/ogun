@@ -16,12 +16,12 @@ def _yamlq(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-# Host reference dirs mounted READ-ONLY into every sandbox: SBX_HOST_RO_MOUNTS
+# Host reference dirs mounted READ-ONLY into every sandbox: host_ro_mounts
 # (colon-separated, globs allowed, each skipped when absent), none by default. Name
 # only dirs a hostile sandbox may safely READ: reference material (the Mac's font
 # folders, say), never credentials or state.
 def host_ro_mounts() -> list[str]:
-    return [m for m in settings.get("SBX_HOST_RO_MOUNTS").split(":") if m]
+    return [m for m in settings.get("host_ro_mounts").split(":") if m]
 
 
 def git_excludes(d: str) -> None:
@@ -60,7 +60,7 @@ def env_yaml(name: str, d: str, box: Path, related: list[str] = (), marketplaces
     from ogun.exchange import folders
     # The project itself is the read-write workspace (a private clone); every other
     # folder is read-only, a host folder only when
-    # SBX_HOST_RO_MOUNTS names it
+    # host_ro_mounts names it
     dr = init.real_path(d)
     y = ['schemaVersion: "1"', f"name: {name}", "agent: claude", "workspace:", f'  path: "{_yamlq(d)}"', "  clone: true",
          "additionalWorkspaces:"]
@@ -79,7 +79,7 @@ def env_yaml(name: str, d: str, box: Path, related: list[str] = (), marketplaces
           # this sandbox's PRIVATE inbox: host-written, read-only inside — files for
           # just this sandbox (og give <name>), so the broadcast inbox/ stays small
           f'  - path: "{_yamlq(str(box))}/in"', ro]
-    # host reference mounts (SBX_HOST_RO_MOUNTS, none by default): read-only,
+    # host reference mounts (host_ro_mounts, none by default): read-only,
     # skipped when absent — and skipped when another rule already mounts the path
     # (the workspace, a related checkout): sbx rejects one path mounted twice
     # ("conflicting read-only settings") at create time. Written out in full: sbx
