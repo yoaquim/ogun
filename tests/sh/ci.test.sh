@@ -24,6 +24,8 @@ expect_cmd 0 "its token only reads: contents: read, nothing written" read_only
 expect_cmd 0 "it runs on pull requests and on pushes to main" \
   bash -c 'grep -qE "^[[:space:]]+pull_request:" "$W" && grep -A3 -E "^[[:space:]]+push:" "$W" | grep -qE "main"'
 expect_cmd 0 "…and runs the test container, the same as a local run" grep -qE 'tests/docker/run\.sh' "$W"
+expect_cmd 0 "…and cancels an older run only for a pull request, never a push to main" \
+  grep -qF "cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$W"
 expect_cmd 0 "…and no secret reaches it" bash -c '! grep -q "secrets\." "$W"'
 
 summarize
