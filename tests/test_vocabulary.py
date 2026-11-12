@@ -222,7 +222,7 @@ def test_a_placeholder_or_a_flag_is_no_example(text):
 
 def test_the_scripts_og_sends_into_a_sandbox_and_its_setup_are_read_too():
     rel = {str(f.relative_to(paths.OGUN)) for f in og_files()}
-    assert {"setup.sh", "test.sh", "bin/venv", "sandbox-scripts/sandbox-ssh.sh", "src/ogun/net/baseline.env"} <= rel
+    assert {"setup.sh", "test.sh", "bin/venv", "sandbox-scripts/sandbox-ssh.sh", "src/ogun/net/baseline.toml"} <= rel
 
 
 @pytest.mark.parametrize("name", ["acme", "github-pat-acme-home", "gitlab.example.com", "pypi.org", "files.pythonhosted.org",

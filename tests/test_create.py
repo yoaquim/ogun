@@ -361,12 +361,14 @@ def test_a_create_that_fails_records_nothing_leaves_no_decision_file_and_says_wh
     assert "sbx couldn't create 'rec-fail'" in out and "disk full" in out and "needs your approval" in out
 
 
-def test_a_baseline_env_og_cant_read_stops_a_create_before_anything_is_made(recipes, stub):
+def test_a_baseline_og_cant_read_stops_a_create_before_anything_is_made(recipes, stub):
     # read after the sandbox exists, it would leave one half set up
-    (recipes / ".config/ogun/baseline.env").write_text("SBX_BASELINE_DOMAINS=unquoted\n")
     s = stub("ogun-work", "ogun-home")
-    with pytest.raises(settings.Unreadable, match=r"baseline\.env"):
+    (recipes / ".config/ogun/config.toml").write_text('[baseline]\ndomains = "unlisted"\n')
+    with pytest.raises(settings.Unreadable, match=r"baseline\.domains"):
         made(recipes, stub, "work", name="bl-bad")
+    c = recipes / ".config/ogun/config.toml"   # what's checked below reads settings too
+    c.write_text(c.read_text().replace('[baseline]\ndomains = "unlisted"\n', ""))
     assert not [c for c in s.calls if c[:2] == ["env", "create"]]
     assert rec("bl-bad") is None and not folders.box("bl-bad")
 

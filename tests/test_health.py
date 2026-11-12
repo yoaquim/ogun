@@ -180,8 +180,8 @@ def baseline_rules(drop=lambda line: False) -> str:
     """The baseline as og policy sets it: a network rule a host, an http rule a read-only one."""
     b = baseline.baseline_lists()
     rows = ["SOURCE   CREATED VIA   APPLIES TO   POLICY   POLICY_ID   RULE   RULE_ID   TYPE   METHOD   PATH   DECISION   PROTOCOLS   RESOURCES"]
-    rows += [f"local  added  all  -  p1  -  id-{h}  network  -  -  allow  tcp  {h}" for h in b["SBX_BASELINE_DOMAINS"].split(",") if h]
-    for r in b["SBX_BASELINE_HTTP"].split():
+    rows += [f"local  added  all  -  p1  -  id-{h}  network  -  -  allow  tcp  {h}" for h in b["domains"] if h]
+    for r in b["http"]:
         h, _, rest = r.partition("=")
         m, _, path = rest.partition("=")
         rows.append(f"local  added  all  -  p1  -  id-{h}  http  {m}  {path or '/**'}  allow  -  {h}")

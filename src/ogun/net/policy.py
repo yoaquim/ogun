@@ -31,7 +31,7 @@ def policy(argv: list[str]) -> int:
         return 1
     b = baseline.baseline_lists()
     summary: list[tuple[str, str]] = []
-    log.step(f"baseline egress: {b['SBX_BASELINE_DOMAINS']}")
+    log.step(f"baseline egress: {', '.join(b['domains'])}")
     base_ok = baseline.baseline()
     summary.append(("baseline", f"[ok]{log.DONE} applied[/]" if base_ok else f"[error]{log.FAILED} failed[/] (above)"))
     log.step("GitHub pushes: each sandbox to its own repos")

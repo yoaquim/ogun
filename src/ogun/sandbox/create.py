@@ -194,7 +194,7 @@ def create(name: str, org: str, d: str, kind: str = "session", item: str = "", a
         log.err("og: no profile and no token_name, so og can't name this Mac's GitHub token items; nothing was made. "
                 "Choose a profile (OG_PROFILE, or ~/.config/ogun/profile) or set token_name (docs/appendix/flags-and-env.md)")
         return False
-    baseline.baseline_lists()   # a baseline.env og can't read stops here, not with the sandbox half set up
+    baseline.baseline_lists()   # a [baseline] og can't read stops here, not with the sandbox half set up
     # secret grants: asked about before anything exists, so a "no" leaves no half-made sandbox
     given = approval.approved(d)
     sshkd = sshkeys.keys_dir()

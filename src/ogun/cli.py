@@ -137,11 +137,11 @@ def _mcp_registry() -> None:
 
 @internal.command("baseline")
 def _baseline() -> None:
-    """The baseline og applies, as NAME="value" lines, its settings' hosts in: what a
-    check of the live rules compares them with."""
+    """The baseline og applies, as a [baseline] table to paste into config.toml and edit."""
     from ogun.net import baseline
     b = baseline.baseline_lists()
-    print("".join(f'{k}="{b.get(k, "")}"\n' for k in baseline.LISTS), end="")
+    # a JSON list of strings is a TOML array
+    print("[baseline]\n" + "".join(f"{k} = {json.dumps(b[k])}\n" for k in baseline.LISTS), end="")
 
 
 @internal.command("paths")

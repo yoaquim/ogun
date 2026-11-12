@@ -13,7 +13,6 @@ NAMED = {
     "registry.json": "the repos og knows: their owners, mounts, grants and MCP servers",
     "marketplaces.json": "the plugin marketplaces this Mac's sandboxes mount",
     "templates": "the recipes og builds sandbox images from",
-    "baseline.env": "the network baseline every sandbox gets, in place of og's own",
     "appa.lock": "the OpenAPPA release sandboxes install, by version and SHA-256",
     "profile": "which [profiles.<name>] of config.toml this Mac uses (OG_PROFILE wins)",
 }

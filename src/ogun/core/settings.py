@@ -51,7 +51,7 @@ def _settings(d: dict, where: str, prefix: str = "") -> dict[str, str]:
     return out
 
 
-def _baseline(b, where: str) -> dict[str, list[str]] | None:
+def check_baseline(b, where: str) -> dict[str, list[str]] | None:
     """The [baseline] table: each of its three keys a list of text. None when there is none."""
     if b is None:
         return None
@@ -84,7 +84,7 @@ def _parsed() -> tuple[dict[str, str], dict[str, dict[str, str]], dict[str, list
         d = tomllib.loads(text)
     except tomllib.TOMLDecodeError as e:
         raise Unreadable(f"{where} isn't valid TOML: {e}") from None
-    base = _baseline(d.pop("baseline", None), where)
+    base = check_baseline(d.pop("baseline", None), where)
     profs = d.pop("profiles", {})
     if not isinstance(profs, dict):
         raise Unreadable(f"{where}: profiles must be [profiles.<name>] sections")
