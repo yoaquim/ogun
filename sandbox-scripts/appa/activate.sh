@@ -3,8 +3,8 @@
 # `ogun` at create, once the pinned appa is installed (docs/appa.md). It
 # turns OpenAPPA on for this sandbox:
 #   1. the marker (~/.config/ogun/appa) a provision command may read, then og's provision command again
-#      (OGUN_PROVISION), which may set up ~/.claude/skills its own way; whatever it
-#      leaves (or with none, OGUN_PROVISION empty), the folder is made here for OpenAPPA's skill;
+#      (OG_PROVISION_CMD), which may set up ~/.claude/skills its own way; whatever it
+#      leaves (or with none, OG_PROVISION_CMD empty), the folder is made here for OpenAPPA's skill;
 #   2. OpenAPPA's Claude Code plugin, at the pinned version, without a question;
 #   3. its hooks, saved: every attach's provision may rewrite settings.json, and
 #      ensure.sh merges these back before each session;
@@ -16,7 +16,7 @@
 set -euo pipefail
 v=$1 ws=$2; shift 2
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)   # og's bundle, unpacked for this run
-prov=${OGUN_PROVISION:-}   # og's provision command (provision); set by og's runner, never the sandbox's own
+prov=${OG_PROVISION_CMD:-}   # og's provision command (provision); set by og's runner, never the sandbox's own
 data=$HOME/.local/share/appa conf=$HOME/.config/appa marker=$HOME/.config/ogun/appa
 fail() { echo "activate: $*" >&2; exit 1; }
 

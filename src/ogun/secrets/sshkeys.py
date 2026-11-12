@@ -22,15 +22,15 @@ from ogun.core import log, sbx, settings
 # the signal. The agent reaches it two ways: a socket (SSH_AUTH_SOCK, sbx's
 # /run/ssh-agent.sock) and the gateway's TCP port behind it, which answers the
 # agent protocol to any process that connects; so the probe asks that port for
-# identities too, and any reply is an agent. SBX_AGENT_SOCK and SBX_AGENT_GATEWAY
+# identities too, and any reply is an agent. OG_AGENT_SOCK and OG_AGENT_GATEWAY
 # override its defaults, so the tests run it outside a sandbox.
 PROBE = r'''
-    s=${SSH_AUTH_SOCK:-}; k=${SBX_AGENT_SOCK-/run/ssh-agent.sock}
+    s=${SSH_AUTH_SOCK:-}; k=${OG_AGENT_SOCK-/run/ssh-agent.sock}
     if { [ -n "$s" ] && [ -S "$s" ]; } || { [ -n "$k" ] && [ -S "$k" ]; }; then echo agent:present; exit 0; fi
     if command -v ssh-add >/dev/null 2>&1 && { ssh-add -l >/dev/null 2>&1; [ $? -ne 2 ]; }; then echo agent:present; exit 0; fi
     ask() { exec 3<>"/dev/tcp/$1/$2" || return 1; printf "\000\000\000\001\013" >&3; head -c1 <&3 | od -An -tx1; }
     export -f ask
-    for g in ${SSH_AUTH_SOCK_GATEWAY:-} ${SBX_AGENT_GATEWAY-gateway.docker.internal:3129}; do
+    for g in ${SSH_AUTH_SOCK_GATEWAY:-} ${OG_AGENT_GATEWAY-gateway.docker.internal:3129}; do
         h=${g%:*}; p=${g##*:}; { [ -n "$h" ] && [ -n "$p" ] && [ "$h" != "$g" ]; } || continue
         r=$(timeout 3 bash -c "ask \"\$@\"" _ "$h" "$p" 2>/dev/null)
         [ -n "${r// /}" ] && { echo agent:present; exit 0; }

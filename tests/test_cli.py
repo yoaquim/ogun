@@ -42,8 +42,3 @@ def test_og_runs_with_them_on_its_path(og, tmp_path, monkeypatch):
     assert os.environ["PATH"].split(":")[0] == native
 
 
-def test_the_record_names_the_command_as_typed_whatever_the_environment_says(og, monkeypatch):
-    from ogun.core import log
-    monkeypatch.setenv("OGUN_COMMAND", "something else")
-    og("help")
-    assert log.COMMAND == "og help"

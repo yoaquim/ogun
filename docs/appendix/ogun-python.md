@@ -2,7 +2,7 @@
 
 `og` is a Python command, in `src/ogun/`. `setup.sh` installs it into og's own
 environment (`.venv` on a Mac) and links it as `~/.local/bin/og` and
-`~/.local/bin/ogun` (`OGUN_BIN`), so it runs from any shell, script or cron job, with no profile loaded.
+`~/.local/bin/ogun` (`OG_BIN`), so it runs from any shell, script or cron job, with no profile loaded.
 Its settings come from `~/.config/ogun/config.toml` and the environment
 ([flags-and-env.md](flags-and-env.md#settings)), never a shell profile. The command table
 (`help.py`) is the one list of commands and their arguments, which `og help`, every usage
@@ -49,7 +49,7 @@ The rules are [og's style](ogun-style.md); in short:
   `grep` always matches.
 - **More detail, when you ask:** `-v` shows each `sbx` command run, how it ended and how long
   it took; `-vv` adds what `sbx` printed. These lines go to stderr. The level travels as
-  `OGUN_VERBOSE`, so `og -v <bash command>` shows the `sbx` calls bash makes through
+  `OG_VERBOSE`, so `og -v <bash command>` shows the `sbx` calls bash makes through
   Python too.
 
 og is never built, and installing it downloads nothing: `setup.sh` writes a `.pth`

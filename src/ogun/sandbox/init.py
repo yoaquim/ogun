@@ -45,9 +45,9 @@ def too_broad(d: str, tl: str = "") -> str:
 
 
 def _ask(q: str) -> bool:
-    """A yes at a terminal ($SBX_MENU_IN for tests); no terminal, or anything but
+    """A yes at a terminal ($OG_MENU_IN for tests); no terminal, or anything but
     yes: False, and nothing was changed."""
-    menu = os.environ.get("SBX_MENU_IN")
+    menu = os.environ.get("OG_MENU_IN")
     if not sys.stdin.isatty() and not menu:
         log.err(f"og: {q.removesuffix('?')} — run og at a terminal to be asked, or do it yourself "
                 "(git init, then a first commit)")

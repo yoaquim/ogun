@@ -28,7 +28,7 @@ set -uo pipefail
 docker_dir="$HOME/.docker"
 pidf="$docker_dir/sbx-relay.pid"
 ca_dir="$docker_dir/sbx-ca"
-envf="${SBX_PERSISTENT_ENV:-/etc/sandbox-persistent.sh}"
+envf="${OG_PERSISTENT_ENV:-/etc/sandbox-persistent.sh}"
 # the marker's start, which finds og's line again
 mark="# ogun sandbox-docker ("
 export_line="export DOCKER_EXTRA_CA_DIR=\"\$HOME/.docker/sbx-ca\"  ${mark}sandbox-docker.sh)"

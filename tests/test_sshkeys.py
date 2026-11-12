@@ -88,7 +88,7 @@ def agents():
 def probe(**env) -> str:
     """The probe og sends, run here: no real socket, gateway or agent unless given."""
     base = {k: v for k, v in os.environ.items() if k not in ("SSH_AUTH_SOCK", "SSH_AUTH_SOCK_GATEWAY")}
-    base.update({"SBX_AGENT_SOCK": "", "SBX_AGENT_GATEWAY": "127.0.0.1:1"}, **env)
+    base.update({"OG_AGENT_SOCK": "", "OG_AGENT_GATEWAY": "127.0.0.1:1"}, **env)
     return subprocess.run(["bash", "-c", sshkeys.PROBE], env=base, capture_output=True, text=True).stdout.strip()
 
 
@@ -96,7 +96,7 @@ def test_the_probe_reports_none_when_nothing_answers():
     assert probe() == "agent:none"
 
 
-@pytest.mark.parametrize("where", ["SBX_AGENT_GATEWAY", "SSH_AUTH_SOCK_GATEWAY", "SSH_AUTH_SOCK", "SBX_AGENT_SOCK"],
+@pytest.mark.parametrize("where", ["OG_AGENT_GATEWAY", "SSH_AUTH_SOCK_GATEWAY", "SSH_AUTH_SOCK", "OG_AGENT_SOCK"],
                          ids=["gateway port only", "the gateway's named address", "SSH_AUTH_SOCK", "sbx's fixed socket"])
 def test_the_probe_finds_an_agent_wherever_it_answers(agents, where):
     tcp, sock = agents

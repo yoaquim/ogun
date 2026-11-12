@@ -122,7 +122,7 @@ arguments (`og sh`: only before it, since the words after its name are the comma
 what `sbx` printed. A script og sends to run inside a sandbox shows as its line count, not its
 text; a call that failed shows its exit in red. Each file og changes on this Mac shows too, as
 `  file  removed ~/…`. These go to stderr, and travel to every process the command starts as
-`OGUN_VERBOSE`. Every `sbx` call goes through `src/ogun/core/sbx.py`, so every command gets
+`OG_VERBOSE`. Every `sbx` call goes through `src/ogun/core/sbx.py`, so every command gets
 this for free.
 
 ## The record

@@ -177,15 +177,15 @@ def preview() -> None:
     log.ok("done: what you asked for, finished", "a detail, dim")
     log.warn(f"  {log.WARNING} needs a look: yellow, saying what's wrong", fix=f"{log.cmd('og net cub docs.example.com --rm')}   ← the fix, on its own line")
     log.err("og style: failed or refused — red, on stderr, the reason and then the fix")
-    old = os.environ.get("OGUN_VERBOSE")
-    os.environ["OGUN_VERBOSE"] = "2"
+    old = os.environ.get("OG_VERBOSE")
+    os.environ["OG_VERBOSE"] = "2"
     log.detail("  $ sbx policy ls --wide --type network")
     log.detail("    ↳ exit 0 · 41 ms")
     log.detail("    out│ what sbx printed (-vv)", level=2)
     if old is None:
-        os.environ.pop("OGUN_VERBOSE")
+        os.environ.pop("OG_VERBOSE")
     else:
-        os.environ["OGUN_VERBOSE"] = old
+        os.environ["OG_VERBOSE"] = old
     callout("A CALLOUT", ["a warning that must not scroll past unseen", "each line in orange"])
     table("og style", [("done", f"[ok]{log.DONE} applied[/]"), ("needs a look", f"[warn]{log.WARNING} 1 to remove[/] (above)"),
                         ("failed", f"[error]{log.FAILED} not off yet[/] (above)"), ("plain", "3 sandboxes")])

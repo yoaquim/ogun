@@ -4,13 +4,13 @@
 # in .python-version; the packages in uv.lock. Nothing here updates itself — a
 # new version of any of them is an edit to those files (docs/appendix/ogun-python.md).
 # Run when og is installed, and again by hand after a bump. It puts og on PATH itself: og and
-# ogun, links to the venv's og, in OGUN_BIN (~/.local/bin; empty: no links, as for a
+# ogun, links to the venv's og, in OG_BIN (~/.local/bin; empty: no links, as for a
 # sandbox that builds og only to run its tests).
 set -uo pipefail
 
 here=$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-root="${OGUN_TOOLS:-$HOME/.local/share/ogun}"   # the pinned uv and its Pythons, apart from any other uv's
-bin="${OGUN_BIN-$HOME/.local/bin}"               # where og and ogun go on PATH; set empty for none
+root="${OG_TOOLS:-$HOME/.local/share/ogun}"   # the pinned uv and its Pythons, apart from any other uv's
+bin="${OG_BIN-$HOME/.local/bin}"               # where og and ogun go on PATH; set empty for none
 die() { echo "ogun setup: $*" >&2; exit 1; }
 pin() { awk -v k="$1" '!/^#/ && $1 == k { print $2; exit }' "$here/uv.pin"; }
 

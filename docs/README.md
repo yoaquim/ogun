@@ -20,7 +20,7 @@ token items: [Setting up og](setup.md).
 ```
 
 - **The command.** `setup.sh` builds og's own environment (`.venv` on a Mac) from its
-  pins and links `og` and `ogun` into `~/.local/bin` (`OGUN_BIN`; empty, no links), so og
+  pins and links `og` and `ogun` into `~/.local/bin` (`OG_BIN`; empty, no links), so og
   runs from any shell, script or cron job. A link already there is pointed at this og; a
   file that isn't a link is left alone, and said. Run it again after a bump.
 - **Tab completion.** Source `completion.bash` from your shell profile; setup ends by

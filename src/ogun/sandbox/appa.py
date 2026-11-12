@@ -82,8 +82,8 @@ def runner(provision: str) -> str:
     script it's given ($0), and removes the folder: nothing is left for a later
     run to trust. provision: og's provision command (provision), which
     activate.sh runs again once its marker is written; none, and it does without."""
-    return (f"OGUN_PROVISION={shlex.quote(provision)} "
-            'd=$(mktemp -d) && base64 -d | tar -xzf - -C "$d" && OGUN_PROVISION=$OGUN_PROVISION bash "$d/$0" "$@"; '
+    return (f"OG_PROVISION_CMD={shlex.quote(provision)} "
+            'd=$(mktemp -d) && base64 -d | tar -xzf - -C "$d" && OG_PROVISION_CMD=$OG_PROVISION_CMD bash "$d/$0" "$@"; '
             'rc=$?; rm -rf "$d"; exit "$rc"')
 
 

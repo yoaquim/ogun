@@ -180,7 +180,7 @@ def bundle_files(text: str) -> dict:
 def test_an_appa_script_goes_in_as_a_bundle_on_stdin_never_from_a_host_mount(fakes, home):
     appa.script("box", "ensure.sh", wait="checking")
     c = fakes.sbx.calls[-1]
-    assert c[:4] == ["exec", "-i", "box", "bash"] and c[-1] == "ensure.sh" and "OGUN_PROVISION=" in c[5]
+    assert c[:4] == ["exec", "-i", "box", "bash"] and c[-1] == "ensure.sh" and "OG_PROVISION_CMD=" in c[5]
     got = bundle_files(fakes.sbx.stdin[-1])
     assert sorted(got) == ["activate.sh", "ensure.sh", "policy.py"]
     for name, (body, mode) in got.items():
@@ -198,14 +198,14 @@ def test_the_bundle_runs_from_a_fresh_folder_that_goes_after(home, tmp_path):
 
 def test_activation_is_told_ogs_provision_command_by_og_never_by_the_sandbox(home, monkeypatch):
     monkeypatch.setenv("OG_PROVISION", "~/setup-repo/provision.sh --all")
-    assert appa.runner(appa._provision()).startswith(f"OGUN_PROVISION='{home}/setup-repo/provision.sh --all' ")
-    assert "OGUN_PROVISION='' " in appa.runner("") and "OGUN_PROVISION='a b' " in appa.runner("a b")
+    assert appa.runner(appa._provision()).startswith(f"OG_PROVISION_CMD='{home}/setup-repo/provision.sh --all' ")
+    assert "OG_PROVISION_CMD='' " in appa.runner("") and "OG_PROVISION_CMD='a b' " in appa.runner("a b")
 
 
 def probe_bundle(tmp_path) -> str:
     """A bundle holding one script that prints what it was told to provision with."""
     import base64
-    (tmp_path / "probe.sh").write_text('printf "%s\\n" "${OGUN_PROVISION-unset}" "$@"\n')
+    (tmp_path / "probe.sh").write_text('printf "%s\\n" "${OG_PROVISION_CMD-unset}" "$@"\n')
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as t:
         t.add(tmp_path / "probe.sh", arcname="probe.sh")
@@ -213,7 +213,7 @@ def probe_bundle(tmp_path) -> str:
 
 
 @pytest.mark.parametrize("cmd", ["/srv/me/agent-config/provision.sh --all", ""])
-@pytest.mark.parametrize("planted", [{"OGUN_PROVISION": "/planted/by/the/sandbox"}, {}], ids=["sandbox sets one", "sandbox sets none"])
+@pytest.mark.parametrize("planted", [{"OG_PROVISION_CMD": "/planted/by/the/sandbox"}, {}], ids=["sandbox sets one", "sandbox sets none"])
 def test_the_script_gets_ogs_provision_command_over_the_sandboxs_own_and_its_arguments(tmp_path, cmd, planted):
     p = subprocess.run(["bash", "-c", appa.runner(cmd), "probe.sh", "a b", "c"], input=probe_bundle(tmp_path), capture_output=True,
                        text=True, env={"PATH": "/usr/bin:/bin", "TMPDIR": str(tmp_path), **planted})

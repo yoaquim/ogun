@@ -89,7 +89,7 @@ def pick(recipes, stub, machine, rel, *images, capfd):
 
 
 def test_og_v_shows_the_sbx_call_the_template_choice_makes(recipes, stub, capfd, monkeypatch):
-    monkeypatch.setenv("OGUN_VERBOSE", "1")
+    monkeypatch.setenv("OG_VERBOSE", "1")
     assert "$ sbx template ls" in pick(recipes, stub, "home", "personal/plain", "ogun-home", capfd=capfd)[2]
 
 
@@ -376,7 +376,7 @@ def test_a_create_that_works_shows_ogs_list_of_its_mounts_not_sbxs_plan_unless_v
     out = "".join(capfd.readouterr())
     assert "needs your approval" not in out and "folders mounted besides the workspace" in out
     assert f"{recipes / 'agent-config'} (read-only)" in out
-    monkeypatch.setenv("OGUN_VERBOSE", "2")
+    monkeypatch.setenv("OG_VERBOSE", "2")
     made(recipes, stub, "work", name="rec-plan2", images=("ogun-work",))
     assert "needs your approval" in "".join(capfd.readouterr())
 
@@ -443,11 +443,11 @@ def ask(recipes, tmp_path, monkeypatch):
 
     def at(d, answer):
         if answer is None:   # stdin a pipe that would say yes, and no menu: never asked
-            monkeypatch.delenv("SBX_MENU_IN", raising=False)
+            monkeypatch.delenv("OG_MENU_IN", raising=False)
             monkeypatch.setattr(sys, "stdin", io.StringIO("y\n"))
         else:
             (tmp_path / "menu").write_text(answer + "\n")
-            monkeypatch.setenv("SBX_MENU_IN", str(tmp_path / "menu"))
+            monkeypatch.setenv("OG_MENU_IN", str(tmp_path / "menu"))
         return init.offer_init(str(d))
 
     return at

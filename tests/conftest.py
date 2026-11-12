@@ -264,7 +264,7 @@ def og(home, monkeypatch, capfd):
         log._consoles.clear()
         monkeypatch.setattr(sys, "argv", ["og", *args])
         # set, not deleted: og's -v writes os.environ itself, and only a set is undone after the test
-        monkeypatch.setenv("OGUN_VERBOSE", "")
+        monkeypatch.setenv("OG_VERBOSE", "")
         if stdin is not None:
             # bytes underneath, as a pipe is: og pass --paste reads sys.stdin.buffer
             monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(stdin.encode())))

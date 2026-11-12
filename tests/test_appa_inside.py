@@ -148,7 +148,7 @@ class Box:
         return self.run("bash", self.fix.appa / "ensure.sh", *args, **kw)
 
     def activate(self, *args, **kw) -> subprocess.CompletedProcess:
-        kw.setdefault("OGUN_PROVISION", self.fix.provision)   # og's provision command
+        kw.setdefault("OG_PROVISION_CMD", self.fix.provision)   # og's provision command
         return self.run("bash", self.fix.appa / "activate.sh", "v0.37.0", self.ws, *(args or ("/ro/notes",)), **kw)
 
     def install(self) -> None:
@@ -429,7 +429,7 @@ def test_activate_marker_writable_skills_hooks_saved_the_block_the_status_line_a
 def test_activate_with_no_provision_command_makes_the_skills_folder_itself_and_turns_openappa_on(box, fix):
     b = box()
     (b.h / ".claude").mkdir()
-    p = b.activate(OGUN_PROVISION="")
+    p = b.activate(OG_PROVISION_CMD="")
     assert p.returncode == 0, p.stdout + p.stderr
     skills = b.h / ".claude/skills"
     assert skills.is_dir() and not skills.is_symlink() and (skills / "appa-guide/SKILL.md").is_file() and fix.healthy()
@@ -440,7 +440,7 @@ def test_activate_with_no_provision_command_makes_the_skills_folder_itself_and_t
 def test_a_provision_command_that_sets_up_no_claude_config_still_gets_openappa_its_folder(box, fix):
     # provision is anyone's setup: one that leaves no ~/.claude must not cost the sandbox
     b = box()
-    p = b.activate(OGUN_PROVISION="true")
+    p = b.activate(OG_PROVISION_CMD="true")
     assert p.returncode == 0, p.stdout + p.stderr
     skills = b.h / ".claude/skills"
     assert skills.is_dir() and not skills.is_symlink() and (skills / "appa-guide/SKILL.md").is_file() and fix.healthy()
@@ -450,7 +450,7 @@ def test_activate_refuses_a_skills_link_it_can_t_turn_into_a_folder(box):
     b = box()
     (b.h / ".claude").mkdir()
     (b.h / ".claude/skills").symlink_to(b.h)
-    p = b.activate(OGUN_PROVISION="")
+    p = b.activate(OG_PROVISION_CMD="")
     assert p.returncode != 0 and "is still a link" in p.stdout + p.stderr
 
 

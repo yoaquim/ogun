@@ -18,8 +18,8 @@ TEST_TMP=$(mktemp -d "${TMPDIR:-/tmp}/og-tests.XXXXXX")
 export TMPDIR="$TEST_TMP"
 export XDG_STATE_HOME="$TEST_TMP/state" OG_EXCHANGE="$TEST_TMP/exchange"
 # a test that runs setup.sh never puts og on the real PATH (~/.local/bin): one that
-# checks setup's links names its own OGUN_BIN
-export OGUN_BIN=""
+# checks setup's links names its own OG_BIN
+export OG_BIN=""
 # nor runs under the profile the shell running the tests names: one og's config there
 # doesn't have stops og
 unset OG_PROFILE

@@ -65,7 +65,7 @@ def test_setup_refuses_copying_nothing_when_a_protected_key_has_appeared_there(b
 
 
 def test_og_v_shows_each_sbx_call_setup_makes(box, capfd, monkeypatch):
-    monkeypatch.setenv("OGUN_VERBOSE", "1")
+    monkeypatch.setenv("OG_VERBOSE", "1")
     assert base.setup("box")
     out = "".join(capfd.readouterr())
     assert "$ sbx exec box bash -lc 'sudo apt-get" in out and "$ sbx exec box bash -lc 'mkdir -p ~/.config/sbx" in out
@@ -295,7 +295,7 @@ exit 0
             h.mkdir()
             homes.append(h)
         e = {**os.environ, "HOME": str(h), "PATH": f"{b}{os.pathsep}{os.environ['PATH']}",
-             "SBX_PERSISTENT_ENV": str(h / "env.sh"), "HTTPS_PROXY": "http://gateway.docker.internal:3128",
+             "OG_PERSISTENT_ENV": str(h / "env.sh"), "HTTPS_PROXY": "http://gateway.docker.internal:3128",
              "PROXY_CA_CERT_B64": base64.b64encode(CA_PEM.encode()).decode(), **env}
         p = subprocess.run(["bash", str(DOCKER)], env=e, capture_output=True, text=True)
         settled(h)
@@ -473,7 +473,7 @@ def test_no_docker_nothing_written(tmp_path):
     h.mkdir()
     (h / "env.sh").write_text("x\n")
     p = subprocess.run([str(b / "bash"), str(DOCKER)], capture_output=True, text=True,
-                       env={"HOME": str(h), "PATH": str(b), "SBX_PERSISTENT_ENV": str(h / "env.sh"),
+                       env={"HOME": str(h), "PATH": str(b), "OG_PERSISTENT_ENV": str(h / "env.sh"),
                             "HTTPS_PROXY": "http://p:3128"})
     assert p.returncode == 0
     assert not (h / ".docker").exists() and (h / "env.sh").read_text() == "x\n"

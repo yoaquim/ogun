@@ -186,7 +186,7 @@ sys.exit(0 if waited and "waited" in log.record_file().read_text() else 1)' "$OG
 expect_cmd 0 "…and a record waits for another og command writing one, so two never rotate at once" race
 red_exit() { "$PY" -I - "$OGUN/src" 2>&1 <<'PY' | grep -q $'\x1b\[38;2;237;135;150m    ↳ exit 1'
 import sys, os; sys.path.insert(0, sys.argv[1])
-os.environ["OGUN_VERBOSE"] = "1"
+os.environ["OG_VERBOSE"] = "1"
 from ogun.core import log
 log.pretty = lambda err=False: True
 log._consoles[True] = log.Console(highlight=False, soft_wrap=True, force_terminal=True, color_system="truecolor")
@@ -217,12 +217,12 @@ views() { local d o; d=$(mktemp -d); mkdir -p "$d/ogun"
     '{"t":"2026-10-28T14:07:51","cmd":"og rm fern --force","what":"fern removed"}' > "$d/ogun/og.log"
   o=$(XDG_STATE_HOME="$d" "$PY" -I - "$OGUN/src" 2>&1 <<'PY'
 import sys; sys.path.insert(0, sys.argv[1])
-import os; os.environ["OGUN_VERBOSE"] = "1"
+import os; os.environ["OG_VERBOSE"] = "1"
 from ogun.core import changes, log
 log.pretty = lambda err=False: True
 log._consoles[False] = log.Console(highlight=False, soft_wrap=True, force_terminal=True, width=100)
 changes.show([])
-os.environ["OGUN_VERBOSE"] = "0"   # -v changes nothing it shows
+os.environ["OG_VERBOSE"] = "0"   # -v changes nothing it shows
 print("---"); changes.show([])
 PY
 ) || return 1
@@ -357,7 +357,7 @@ expect_cmd 0 "og keeps the names completion offers: each sbx ls writes them, an 
 entry_sbx() { local b="$FIX/entry-bin"; mkdir -p "$b"
   printf '#!/bin/sh\n[ "$1" = ls ] && { printf "SANDBOX  AGENT  STATUS\\ncub  claude  running\\n"; exit 0; }\n[ "$1 $2" = "policy ls" ] && exit 0   # a read, not logged\necho "$*" >> "%s/entry.log"\n' "$FIX" > "$b/sbx"
   chmod +x "$b/sbx"; : > "$FIX/entry.log"; printf '%s' "$b"; }
-entry_v() { local b e; b=$(entry_sbx); e=$(PATH="$b:$PATH" OGUN_VERBOSE='' "$OG" -v allow cub example.com 2>&1 >/dev/null) || return 1
+entry_v() { local b e; b=$(entry_sbx); e=$(PATH="$b:$PATH" OG_VERBOSE='' "$OG" -v allow cub example.com 2>&1 >/dev/null) || return 1
   [[ "$e" == *'$ sbx policy allow network --sandbox cub example.com'* ]] && [ "$(cat "$FIX/entry.log")" = "policy allow network --sandbox cub example.com" ]; }
 expect_cmd 0 "og -v: each sbx command on stderr" entry_v
 entry_help() { local b o; b=$(entry_sbx); o=$(PATH="$b:$PATH" "$OG" allow cub example.com --help 2>&1) || return 1

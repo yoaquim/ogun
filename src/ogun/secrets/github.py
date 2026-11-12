@@ -151,7 +151,7 @@ def pick_item() -> str:
     profile's token installs that token). Enter: this Mac's personal item. A typo or an
     out-of-range number asks again (three tries); end of input, or three misses,
     is "" — the caller must then stop rather than fall back to personal by
-    accident. Reads the terminal ($SBX_MENU_IN for tests), one open stream, so a
+    accident. Reads the terminal ($OG_MENU_IN for tests), one open stream, so a
     retry reads the NEXT line."""
     its = vault_items()
     if not its:
@@ -167,7 +167,7 @@ def pick_item() -> str:
     for i, it in enumerate(its, 1):
         print(f"    {i}) {it}  (owner: {item_owner(it)})", file=sys.stderr)
     try:
-        f = open(os.environ.get("SBX_MENU_IN") or "/dev/tty")  # noqa: SIM115 closed by the with below; only the open may fail
+        f = open(os.environ.get("OG_MENU_IN") or "/dev/tty")  # noqa: SIM115 closed by the with below; only the open may fail
     except OSError:
         return ""
     with f:

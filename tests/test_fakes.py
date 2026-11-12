@@ -66,7 +66,7 @@ def test_a_verbose_og_leaves_no_verbosity_behind(og, fakes):
 
 def test_the_next_og_runs_quiet():
     import os
-    assert os.environ.get("OGUN_VERBOSE", "") == ""
+    assert os.environ.get("OG_VERBOSE", "") == ""
 
 
 def test_an_answer_can_ask_for_text_anywhere_in_the_call(fakes):

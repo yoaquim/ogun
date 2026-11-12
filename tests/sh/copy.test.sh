@@ -17,7 +17,7 @@ og_python_or_skip   # the copy's setup builds from the same pinned tools, kept w
 
 COPY="$TEST_TMP/elsewhere/og"   # nothing beside it: no repo, no config of anyone's
 mkdir -p "$COPY" "$TEST_TMP/bin" "$TEST_TMP/onpath" "$TEST_TMP/home"
-export TEST_TMP COPY OGUN_TOOLS="${OGUN_TOOLS:-$HOME/.local/share/ogun}"
+export TEST_TMP COPY OG_TOOLS="${OG_TOOLS:-$HOME/.local/share/ogun}"
 # every file of og's, as a team would get it: not the venvs or caches this checkout built
 tar -C "$OGUN" --exclude='./.venv*' --exclude='__pycache__' --exclude='.pytest_cache' --exclude='.ruff_cache' -cf - . \
   | tar -C "$COPY" -xf -
@@ -31,7 +31,7 @@ git -C "$COPY" init -q && git -C "$COPY" add -A \
   && git -C "$COPY" -c user.name=og -c user.email=og@example.com -c commit.gpgsign=false commit -qm copy
 
 # setup in the copy: its own venv, og and ogun linked into a folder of this test's
-if OUT=$(cd "$COPY" && OGUN_BIN="$TEST_TMP/onpath" bash ./setup.sh 2>&1); then SETUP=0; else SETUP=1; fi
+if OUT=$(cd "$COPY" && OG_BIN="$TEST_TMP/onpath" bash ./setup.sh 2>&1); then SETUP=0; else SETUP=1; fi
 export OUT SETUP
 expect_cmd 0 "setup builds og in the copy and links og and ogun to the copy's og" \
   bash -c '[ "$SETUP" = 0 ] || { echo "$OUT"; exit 1; }

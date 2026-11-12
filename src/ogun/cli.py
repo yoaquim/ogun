@@ -3,7 +3,7 @@ included. setup.sh installs it as the command pyproject.toml declares.
 
 `-v` / `-vv` (anywhere in a command's arguments; for a bare og, before its
 flags) turn on more detail for everything this run starts: the level travels as
-OGUN_VERBOSE (src/ogun/core/log.py)."""
+OG_VERBOSE (src/ogun/core/log.py)."""
 
 import json
 import os
@@ -160,7 +160,7 @@ _VERBOSE = {"-v": 1, "-vv": 2, "--verbose": 1}
 
 
 def _verbosity(args: list[str], anywhere: bool) -> list[str]:
-    """Take -v / -vv / --verbose out of the arguments into OGUN_VERBOSE: every
+    """Take -v / -vv / --verbose out of the arguments into OG_VERBOSE: every
     one before the command, and anywhere in a command's own arguments."""
     level, rest, leading = log.verbosity(), [], True
     for a in args:
@@ -170,7 +170,7 @@ def _verbosity(args: list[str], anywhere: bool) -> list[str]:
         leading = False
         rest.append(a)
     if level:
-        os.environ["OGUN_VERBOSE"] = str(min(level, 2))
+        os.environ["OG_VERBOSE"] = str(min(level, 2))
     return rest
 
 

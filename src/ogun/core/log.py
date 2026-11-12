@@ -8,8 +8,8 @@ file, a pipe, the tests): the bare words, byte for byte, so every grep keeps
 working; no clock, no color, no table. Errors go to stderr, the rest to stdout
 unless a caller says otherwise.
 
-More detail is opt-in, never mixed into the default output: OGUN_VERBOSE=1
-(`og -v`) shows each sbx command og runs and how it ended, OGUN_VERBOSE=2
+More detail is opt-in, never mixed into the default output: OG_VERBOSE=1
+(`og -v`) shows each sbx command og runs and how it ended, OG_VERBOSE=2
 (`og -vv`) what it printed too. Those lines go to stderr, so stdout stays data.
 The level is an environment variable so it reaches every process a command
 starts, og internal among them."""
@@ -64,7 +64,7 @@ def pretty(err: bool = False) -> bool:
 
 
 def verbosity() -> int:
-    v = os.environ.get("OGUN_VERBOSE", "")
+    v = os.environ.get("OG_VERBOSE", "")
     return int(v) if v.isdigit() else 0
 
 

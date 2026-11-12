@@ -239,7 +239,7 @@ def test_a_sandbox_whose_workspace_is_unknown_is_refused(tk, capfd):
 
 
 def test_vv_shows_the_set_call_never_the_token(tk, capfd, monkeypatch):
-    monkeypatch.setenv("OGUN_VERBOSE", "2")
+    monkeypatch.setenv("OG_VERBOSE", "2")
     tk.sbx(none=True)
     assert refresh(tk, "acme", "github-pat-acme-desk")
     out = "".join(capfd.readouterr())
@@ -319,7 +319,7 @@ def pick(tk, tmp_path, monkeypatch, capfd):
     def answer(lines: str) -> tuple[str, str]:
         f = tmp_path / "menu"
         f.write_text(lines)
-        monkeypatch.setenv("SBX_MENU_IN", str(f))
+        monkeypatch.setenv("OG_MENU_IN", str(f))
         capfd.readouterr()
         return github.pick_item(), capfd.readouterr().err
 
@@ -357,13 +357,13 @@ def test_under_a_suffix_only_its_own_tokens_are_offered(pick, tk):
 
 def test_a_vault_with_none_picks_nothing(pick, tk, monkeypatch):
     tk.op(items="[]")
-    monkeypatch.setenv("SBX_MENU_IN", "/dev/null")
+    monkeypatch.setenv("OG_MENU_IN", "/dev/null")
     assert github.pick_item() == ""
 
 
 def test_an_empty_menu_says_the_vault_holds_none_this_mac_may_use(pick, tk, monkeypatch, capfd):
     tk.op(items="[]")
-    monkeypatch.setenv("SBX_MENU_IN", "/dev/null")
+    monkeypatch.setenv("OG_MENU_IN", "/dev/null")
     capfd.readouterr()
     assert github.pick_item() == ""
     err = capfd.readouterr().err
@@ -374,7 +374,7 @@ def test_with_no_profile_or_token_name_the_empty_menu_says_that_instead(pick, tk
     # no profile anywhere in the config, so no ending to tell a token item by
     tk.profile(None)
     (tk.home / ".config/ogun/config.toml").unlink()
-    monkeypatch.setenv("SBX_MENU_IN", "/dev/null")
+    monkeypatch.setenv("OG_MENU_IN", "/dev/null")
     capfd.readouterr()
     assert github.pick_item() == ""
     err = capfd.readouterr().err

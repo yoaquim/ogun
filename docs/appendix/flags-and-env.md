@@ -68,9 +68,9 @@ reads as no profile.
 | `SBX_GITHUB_OWNERS` | none: each folder's own name | `<folder>=<github owner>` pairs, space-separated, for `og token`'s form: the GitHub account a folder's token is for when it isn't the folder's name. With no pair, `personal`'s form names no account, so GitHub takes your own. A pair that isn't one stops og, naming it. Example: `personal=jdoe acme=acme-corp` |
 | `SBX_PROTECTED_KEYS` | `~/.ssh/allowed_signers` | the files whose keys never go into a sandbox's ssh keys folder, colon-separated, each a full path (`/…` or `~/…`): a key, private or public, or a signers file in git's `allowed_signers` form, every key it trusts. A key there refuses the folder, naming the file. A file that isn't there protects nothing; a path that isn't full stops og. Example: `~/.ssh/signing:~/.ssh/allowed_signers` |
 | `OG_PROFILE` | `~/.config/ogun/profile` | which profile of the settings file to use ([profiles](#profiles)); environment only |
-| `SBX_MENU_IN` | `/dev/tty` | where the token menu reads its answer (tests) |
-| `SBX_AGENT_SOCK`, `SBX_AGENT_GATEWAY` | `/run/ssh-agent.sock`, `gateway.docker.internal:3129` | what the ssh-agent probe asks (tests) |
+| `OG_MENU_IN` | `/dev/tty` | where the token menu reads its answer (tests) |
+| `OG_AGENT_SOCK`, `OG_AGENT_GATEWAY` | `/run/ssh-agent.sock`, `gateway.docker.internal:3129` | what the ssh-agent probe asks (tests) |
 | `NO_COLOR`, `TERM=dumb` | — | plain output from `ogun` |
 
 Every row above `OG_PROFILE` is a setting the file takes too, shared or in a profile;
-`OG_PROFILE`, `SBX_MENU_IN`, the agent probe's and the plain-output variables are environment only.
+`OG_PROFILE`, `OG_MENU_IN`, the agent probe's and the plain-output variables are environment only.
