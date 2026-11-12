@@ -70,7 +70,7 @@ def gh(home, fakes, stand_in, real_git, og, tmp_path, monkeypatch):
     out, downloads = home / "exchange/boxes/cub/out", root / "Downloads"
     out.mkdir(parents=True)
     downloads.mkdir(parents=True)
-    for k, v in (("SBX_EXCHANGE", home / "exchange"), ("SBX_TAKE_DEST", downloads), ("WPR_FETCH_URL", root / "gh.git"),
+    for k, v in (("OG_EXCHANGE", home / "exchange"), ("OG_TAKE_DEST", downloads), ("WPR_FETCH_URL", root / "gh.git"),
                  ("WPR_OUT_DIR", out), ("SANDBOX_NAME", "cub"), ("GIT_AUTHOR_NAME", "t"), ("GIT_AUTHOR_EMAIL", "t@t"),
                  ("GIT_COMMITTER_NAME", "t"), ("GIT_COMMITTER_EMAIL", "t@t")):
         monkeypatch.setenv(k, str(v))

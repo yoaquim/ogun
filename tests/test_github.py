@@ -46,7 +46,7 @@ def test_anywhere_else_the_owner_is_the_fallback_it_is(world):
 
 def test_a_fixed_owner_folders_repo_is_from_path_and_the_fallback_names_every_folder(world, monkeypatch):
     (world / "Work/api").mkdir(parents=True)
-    monkeypatch.setenv("SBX_PROJECTS", f"{world}/Projects:{world}/Work=acme")
+    monkeypatch.setenv("OG_PROJECTS", f"{world}/Projects:{world}/Work=acme")
     d = _d(world, "Work/api")
     assert (github.org_resolve(d), github.org_source(d, "acme")) == ("acme", "from path")
     d = _d(world, "tmp/.hidden-repo")
@@ -93,7 +93,7 @@ class Token:
                 o.answer(["read", "-n", f"op://Sandbox/{it}/credential"], stdout="" if it in missing else f"tok-{it}",
                          code=1 if it in missing else 0)
 
-    def record(self, owner, it, at=".config/sbx/ogun/tokens"):
+    def record(self, owner, it, at=".local/state/ogun/tokens"):
         (self.home / at).mkdir(parents=True, exist_ok=True)
         for kind, v in (("owner", owner), ("item", it)):
             f = self.home / at / f"tk.{kind}"
@@ -114,7 +114,7 @@ class Token:
 
 @pytest.fixture
 def tk(home, registry, fakes, monkeypatch):
-    monkeypatch.setenv("SBX_VAULT", "Sandbox")
+    monkeypatch.setenv("OG_VAULT", "Sandbox")
     registry({"quill": {"owner": "acme", "github": "quill-labs"}})
     for d in ("Projects/acme/app", "Projects/acme/quill", "flat/app"):
         (home / d).mkdir(parents=True)
@@ -239,7 +239,7 @@ def test_a_sandbox_whose_workspace_is_unknown_is_refused(tk, capfd):
 
 
 def test_vv_shows_the_set_call_never_the_token(tk, capfd, monkeypatch):
-    monkeypatch.setenv("OGUN_VERBOSE", "2")
+    monkeypatch.setenv("OG_VERBOSE", "2")
     tk.sbx(none=True)
     assert refresh(tk, "acme", "github-pat-acme-desk")
     out = "".join(capfd.readouterr())
@@ -255,10 +255,10 @@ def test_an_item_given_by_the_menu_or_item_is_the_only_one_read(tk):
 # ── where its records live: og's state folder ──
 
 def test_a_sandboxs_token_records_go_in_ogs_state_folder(tk, monkeypatch):
-    monkeypatch.setenv("SBX_OGUN_DIR", str(tk.home / "state"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(tk.home / "xstate"))
     tk.sbx(none=True)
     assert github.set_token("tk", "acme", "github-pat-acme-work")
-    got = {f.name: f.read_text() for f in (tk.home / "state/tokens").iterdir()}
+    got = {f.name: f.read_text() for f in (tk.home / "xstate/ogun/tokens").iterdir()}
     assert got == {"tk.owner": "acme\n", "tk.item": "github-pat-acme-work\n", "github-acme.expires": "2027-01-15\n"}
 
 
@@ -319,7 +319,7 @@ def pick(tk, tmp_path, monkeypatch, capfd):
     def answer(lines: str) -> tuple[str, str]:
         f = tmp_path / "menu"
         f.write_text(lines)
-        monkeypatch.setenv("SBX_MENU_IN", str(f))
+        monkeypatch.setenv("OG_MENU_IN", str(f))
         capfd.readouterr()
         return github.pick_item(), capfd.readouterr().err
 
@@ -357,13 +357,13 @@ def test_under_a_suffix_only_its_own_tokens_are_offered(pick, tk):
 
 def test_a_vault_with_none_picks_nothing(pick, tk, monkeypatch):
     tk.op(items="[]")
-    monkeypatch.setenv("SBX_MENU_IN", "/dev/null")
+    monkeypatch.setenv("OG_MENU_IN", "/dev/null")
     assert github.pick_item() == ""
 
 
 def test_an_empty_menu_says_the_vault_holds_none_this_mac_may_use(pick, tk, monkeypatch, capfd):
     tk.op(items="[]")
-    monkeypatch.setenv("SBX_MENU_IN", "/dev/null")
+    monkeypatch.setenv("OG_MENU_IN", "/dev/null")
     capfd.readouterr()
     assert github.pick_item() == ""
     err = capfd.readouterr().err
@@ -374,11 +374,11 @@ def test_with_no_profile_or_token_name_the_empty_menu_says_that_instead(pick, tk
     # no profile anywhere in the config, so no ending to tell a token item by
     tk.profile(None)
     (tk.home / ".config/ogun/config.toml").unlink()
-    monkeypatch.setenv("SBX_MENU_IN", "/dev/null")
+    monkeypatch.setenv("OG_MENU_IN", "/dev/null")
     capfd.readouterr()
     assert github.pick_item() == ""
     err = capfd.readouterr().err
-    assert "SBX_TOKEN_NAME" in err and "profile" in err and "vault" not in err
+    assert "token_name" in err and "profile" in err and "vault" not in err
 
 
 # ── a token's item, its owner, and the items a Mac may use: what og token mints into and og reads ──
@@ -412,7 +412,7 @@ def test_the_vaults_items_a_mac_may_use_sorted(tk, machine, kept):
 def test_the_line_says_what_gave_the_owner_through_a_linked_folder_and_below_a_fixed_owners_repo(world, monkeypatch):
     (world / "Work/api/sub").mkdir(parents=True)
     (world / "wl").symlink_to(world / "Work")
-    monkeypatch.setenv("SBX_PROJECTS", f"{world}/Projects:{world}/wl=acme")
+    monkeypatch.setenv("OG_PROJECTS", f"{world}/Projects:{world}/wl=acme")
     d = _d(world, "Work/api")
     assert (github.org_resolve(d), github.org_source(d, "acme")) == ("acme", "from path")
     d = _d(world, "Work/api/sub")

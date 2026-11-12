@@ -33,7 +33,7 @@ _EXT_MIME = {
 
 
 def take_dest() -> Path:
-    return settings.path("SBX_TAKE_DEST", Path.home() / "Downloads")
+    return settings.path("take_dest", Path.home() / "Downloads")
 
 
 shown = log.shown

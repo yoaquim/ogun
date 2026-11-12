@@ -144,7 +144,7 @@ def test_a_link_into_a_folder_whose_name_starts_like_the_owners_is_outside_it(wo
 @pytest.mark.parametrize("inner", ["umbrella", "umbrella/shop-b", "umbrella/shop-b/vendor"])
 def test_nested_project_folders_stop_og_before_any_related_mount_or_grant(world, monkeypatch, inner):
     (world / "Projects/umbrella/shop-b/.git").mkdir(exist_ok=True)
-    monkeypatch.setenv("SBX_PROJECTS", f"{world}/Projects:{world}/Projects/{inner}=globex")
+    monkeypatch.setenv("OG_PROJECTS", f"{world}/Projects:{world}/Projects/{inner}=globex")
     with pytest.raises(settings.Unreadable, match="can't nest"):
         reg.mounts("x", "umbrella", {"read": ["umbrella/shop-b"]}, "", True)
     with pytest.raises(settings.Unreadable, match="can't nest"):
@@ -207,7 +207,7 @@ def test_a_full_path_names_the_same_grant(in_plain, og):
 def test_a_full_path_through_a_symlinked_projects_root_still_resolves(in_plain, og, monkeypatch):
     og("project", "add", "planner")
     (in_plain / "plink").symlink_to(in_plain / "Projects")
-    monkeypatch.setenv("SBX_PROJECTS", str(in_plain / "plink"))
+    monkeypatch.setenv("OG_PROJECTS", str(in_plain / "plink"))
     code, out, _ = og("project", "add", str(in_plain / "plink/personal/planner"))
     assert code == 0
     assert "plain already has personal/planner: nothing to change" in out

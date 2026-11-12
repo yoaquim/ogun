@@ -19,7 +19,7 @@ TAKE_HELP = dict(
         ("og take <name> --all", "take everything"),
     ],
     notes=["Each file is checked before it's delivered: a link, a folder, a program, or an extension that "
-           "doesn't match the content is quarantined instead. Files land in ~/Downloads (SBX_TAKE_DEST), "
+           "doesn't match the content is quarantined instead. Files land in ~/Downloads (take_dest), "
            "never over one already there."],
     examples=["og take cub", "og take cub report.pdf", "og take cub --all"],
 )

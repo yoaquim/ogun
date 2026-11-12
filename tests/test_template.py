@@ -227,11 +227,11 @@ def test_a_failing_recipe_or_a_sandbox_that_wont_stop_saves_nothing_and_still_re
         assert "og template: 'tst' failed — nothing saved" in out + err
 
 
-def test_a_baseline_env_og_cant_read_stops_a_build_before_anything_is_made(og, stub, recipes):
-    (recipes / ".config/ogun/baseline.env").write_text("SBX_BASELINE_DOMAINS=unquoted\n")
+def test_a_baseline_og_cant_read_stops_a_build_before_anything_is_made(og, stub, recipes):
+    (recipes / ".config/ogun/config.toml").write_text('[baseline]\ndomains = "unlisted"\n')
     s = stub(golden=[GOLDEN])
     code, out, err = og("template", "tst")
-    assert code == 1 and "baseline.env" in out + err
+    assert code == 1 and "baseline" in out + err
     assert not [c for c in s.calls if c[:2] == ["env", "create"]]
     assert not (recipes / ".local/state/sbx-golden-tst").exists()
 

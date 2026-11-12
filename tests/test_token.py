@@ -20,7 +20,7 @@ READ = "read -n op://Sandbox/github-pat-{}-desk/credential"
 def mint(og, fakes, home, stand_in, monkeypatch):
     """og token, with the credential the item holds before the form (before=) and
     at each read after it (after=, one per Enter); keys is what's typed."""
-    monkeypatch.setenv("SBX_VAULT", "Sandbox")
+    monkeypatch.setenv("OG_VAULT", "Sandbox")
     use_profile(home, "home")
     url = home / "opened"
     stand_in("open", f'printf "%s\\n" "$1" > "{url}"')
@@ -39,7 +39,7 @@ def mint(og, fakes, home, stand_in, monkeypatch):
 
 
 def expiry(home, owner):
-    f = home / f".config/sbx/ogun/tokens/github-{owner}.expires"
+    f = home / f".local/state/ogun/tokens/github-{owner}.expires"
     return f.read_text().strip() if f.exists() else None
 
 
@@ -65,20 +65,20 @@ def test_no_owner_is_personal_and_the_form_names_no_github_owner_so_its_your_own
     assert code == 0 and "target_name=" not in url and reads[0] == READ.format("personal")
 
 
-# ── SBX_GITHUB_OWNERS: a folder whose GitHub owner has another name ──
+# ── github_owners: a folder whose GitHub owner has another name ──
 
-def test_a_folder_named_in_sbx_github_owners_opens_the_form_for_that_github_owner(mint, monkeypatch):
-    monkeypatch.setenv("SBX_GITHUB_OWNERS", "acme=acme-corp personal=jdoe")
+def test_a_folder_named_in_github_owners_opens_the_form_for_that_github_owner(mint, monkeypatch):
+    monkeypatch.setenv("OG_GITHUB_OWNERS", "acme=acme-corp personal=jdoe")
     assert "&target_name=acme-corp&" in mint("acme")[2]
     assert "&target_name=jdoe&" in mint()[2]
     assert "&target_name=other&" in mint("other")[2]
 
 
 @pytest.mark.parametrize("bad", ["acme", "acme=", "=acme-corp", "acme=acme corp=", "Acme=acme-corp", "acme=acme/corp"])
-def test_a_malformed_sbx_github_owners_stops_og_naming_it(mint, monkeypatch, bad):
-    monkeypatch.setenv("SBX_GITHUB_OWNERS", bad)
+def test_a_malformed_github_owners_stops_og_naming_it(mint, monkeypatch, bad):
+    monkeypatch.setenv("OG_GITHUB_OWNERS", bad)
     code, out, url, _ = mint("acme")
-    assert code == 1 and url is None and "SBX_GITHUB_OWNERS" in out
+    assert code == 1 and url is None and "github_owners" in out
 
 
 def test_the_form_names_the_item_and_asks_for_exactly_these_permissions(mint):
@@ -135,7 +135,7 @@ def test_the_credential_is_read_from_the_forms_item_before_and_after_and_never_p
 def test_nothing_saved_asks_again_in_place_then_records_nothing_and_never_sends_you_to_mint_another(mint, home):
     code, out, _, reads = mint("umbrella", "30", after=("", "", "", ""), keys="\n\n\n\n")   # an Enter to spare: three asks, no more
     assert code == 1 and expiry(home, "umbrella") is None and len(reads) == 4
-    assert "don't mint another" in out and "mkdir -p ~/.config/sbx/ogun/tokens && date -v+30d +%Y-%m-%d > ~/.config/sbx/ogun/tokens/github-umbrella.expires" in out
+    assert "don't mint another" in out and "mkdir -p ~/.local/state/ogun/tokens && date -v+30d +%Y-%m-%d > ~/.local/state/ogun/tokens/github-umbrella.expires" in out
     assert "then run: og token" not in out
 
 
@@ -177,23 +177,23 @@ def test_a_suffixed_profile_mints_into_an_item_with_its_suffix(mint, home):
 
 
 def test_the_vault_is_ogs_setting(mint, monkeypatch):
-    monkeypatch.setenv("SBX_VAULT", "Other")
+    monkeypatch.setenv("OG_VAULT", "Other")
     assert mint("umbrella")[3][0] == "read -n op://Other/github-pat-umbrella-desk/credential"
 
 
 def test_the_vault_set_in_ogs_settings_file_is_the_one_minted_into(mint, home, monkeypatch):
-    monkeypatch.delenv("SBX_VAULT")
+    monkeypatch.delenv("OG_VAULT")
     (home / ".config/ogun").mkdir(parents=True, exist_ok=True)
-    (home / ".config/ogun/config.toml").write_text('SBX_VAULT = "CustomVault"\n' + MAC_PROFILES)
+    (home / ".config/ogun/config.toml").write_text('vault = "CustomVault"\n' + MAC_PROFILES)
     assert mint("umbrella")[3][0] == "read -n op://CustomVault/github-pat-umbrella-desk/credential"
 
 
 def test_a_settings_file_og_cant_read_stops_it_before_the_form_never_a_guessed_vault(mint, home, monkeypatch):
-    monkeypatch.delenv("SBX_VAULT")
+    monkeypatch.delenv("OG_VAULT")
     (home / ".config/ogun").mkdir(parents=True, exist_ok=True)
-    (home / ".config/ogun/config.toml").write_text('SBX_VALT = "CustomVault"\n')
+    (home / ".config/ogun/config.toml").write_text('valt = "CustomVault"\n')
     code, out, url, reads = mint("umbrella")
-    assert code == 1 and url is None and reads == [] and "SBX_VALT" in out
+    assert code == 1 and url is None and reads == [] and "valt" in out
 
 
 def test_a_saved_token_says_how_new_and_existing_sandboxes_get_it(mint):
@@ -214,5 +214,5 @@ def test_help_is_its_usage_and_mints_nothing(og, fakes, home):
 
 def test_the_record_command_quotes_a_state_folder_the_shell_would_split(home):
     from ogun.secrets import token
-    assert token._sh(home / ".config/sbx/ogun/tokens") == "~/.config/sbx/ogun/tokens"
+    assert token._sh(home / ".local/state/ogun/tokens") == "~/.local/state/ogun/tokens"
     assert token._sh(home / "my state/tokens") == f"'{home}/my state/tokens'"

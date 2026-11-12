@@ -15,8 +15,9 @@ scoped to one sandbox (what you approve).
   repositories the sandbox image lists (Docker's and GitHub CLI's), and Docker's documentation
   (`docs.docker.com`), read-only too. The rest of AWS is left out
   ([below](#what-the-baseline-leaves-out)). It also takes out four of sbx's own default
-  rules ([below](#sbxs-default-rules)). The lists are in og's `src/ogun/net/baseline.env`, each
-  with its reason.
+  rules ([below](#sbxs-default-rules)). The lists are in og's `src/ogun/net/baseline.toml`, each
+  with its reason; a `[baseline]` table in `config.toml` replaces them
+  ([settings](appendix/flags-and-env.md#the-network-baseline)).
 - **Containers inside a sandbox** go through a relay to the same proxy, so the same rules
   apply to them ([Docker inside a sandbox](sandboxes.md#docker-inside-a-sandbox)).
 - **A blocked request** returns HTTP 403 naming the domain. What the agent does next is up to

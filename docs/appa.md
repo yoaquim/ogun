@@ -119,7 +119,7 @@ entry in og's registry (`registry.json` in its [config folder](config.md)), as `
 | checks | the SHA-256 against the lock; no archive entry that's absolute or climbs out with `..`; `appa` a regular file, not a link; `appa --version` runs |
 | install | `/usr/local/bin/appa`. An `appa` already at the pinned version, from a template's image, is kept |
 | token | the sandbox's GitHub token is set before the install, not after it as without OpenAPPA: the policy asks GitHub whether the origin is private |
-| activation | [`activate.sh`](../sandbox-scripts/appa/activate.sh), inside the sandbox: below. og sends it in with `ensure.sh` and `policy.py`, unpacked into a fresh folder for the run and removed after, so it needs nothing of og's mounted in the sandbox. Once the marker is written it runs og's provision command again (`SBX_PROVISION`), and whatever that leaves, it makes `~/.claude/skills` and `settings.json` if they're missing |
+| activation | [`activate.sh`](../sandbox-scripts/appa/activate.sh), inside the sandbox: below. og sends it in with `ensure.sh` and `policy.py`, unpacked into a fresh folder for the run and removed after, so it needs nothing of og's mounted in the sandbox. Once the marker is written it runs og's provision command again (`provision`), and whatever that leaves, it makes `~/.claude/skills` and `settings.json` if they're missing |
 | record | `"appa": {"version": …}` in the sandbox's record |
 
 **Activation** turns it on:

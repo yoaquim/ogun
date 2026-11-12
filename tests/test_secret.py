@@ -39,7 +39,7 @@ def stub(fakes, *, ls_fail=False, set_out=SAVED, set_err="", set_code=0, exec_co
 
 @pytest.fixture
 def sbx(fakes, monkeypatch):
-    monkeypatch.delenv("SBX_VAULT", raising=False)
+    monkeypatch.delenv("OG_VAULT", raising=False)
     fakes.op.answer([], stdout="raw-secret-123")
     return stub(fakes)
 
@@ -132,8 +132,8 @@ def test_a_github_address_in_any_shape_is_refused_with_the_command_that_replaces
 
 
 def test_the_github_refusal_names_the_owner_its_token_was_set_for(og, sbx, home):
-    (home / ".config/sbx/ogun/tokens").mkdir()
-    (home / ".config/sbx/ogun/tokens/fern.owner").write_text("acme\n")
+    (home / ".local/state/ogun/tokens").mkdir()
+    (home / ".local/state/ogun/tokens/fern.owner").write_text("acme\n")
     assert "og fern --org acme" in said(og("pass", "fern", "GH2", "github.com", "--item", "i"))
 
 

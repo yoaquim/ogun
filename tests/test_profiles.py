@@ -10,7 +10,7 @@ from ogun.core import config, settings
 from ogun.sandbox import template
 from ogun.secrets import github
 
-BOTH = '[profiles.home]\nSBX_TOKEN_NAME = "desk"\n\n[profiles.work]\nSBX_TOKEN_SUFFIX = "-work"\n'
+BOTH = '[profiles.home]\ntoken_name = "desk"\n\n[profiles.work]\ntoken_suffix = "-work"\n'
 
 
 @pytest.fixture
@@ -29,27 +29,27 @@ def cfg(home, monkeypatch):
 # ── which profile: told, never guessed ──
 
 def test_no_profile_chosen_is_none_and_only_the_shared_settings_apply(cfg):
-    cfg('SBX_VAULT = "Shared"\n[profiles.work]\nSBX_VAULT = "Office"\n')
-    assert settings.profile() == "" and settings.get("SBX_VAULT") == "Shared"
+    cfg('vault = "Shared"\n[profiles.work]\nvault = "Office"\n')
+    assert settings.profile() == "" and settings.get("vault") == "Shared"
 
 
 def test_the_profile_file_chooses_and_its_section_wins_over_the_shared_settings(cfg):
-    cfg('SBX_VAULT = "Shared"\nSBX_TOKEN_NAME = "x"\n[profiles.work]\nSBX_VAULT = "Office"\n', profile="work\n")
+    cfg('vault = "Shared"\ntoken_name = "x"\n[profiles.work]\nvault = "Office"\n', profile="work\n")
     assert settings.profile() == "work"
-    assert (settings.get("SBX_VAULT"), settings.get("SBX_TOKEN_NAME")) == ("Office", "x")
+    assert (settings.get("vault"), settings.get("token_name")) == ("Office", "x")
 
 
 def test_og_profile_wins_over_the_file_and_the_environment_over_both(cfg, monkeypatch):
-    cfg(BOTH + '[profiles.other]\nSBX_VAULT = "Other"\n', profile="work")
+    cfg(BOTH + '[profiles.other]\nvault = "Other"\n', profile="work")
     monkeypatch.setenv("OG_PROFILE", "other")
-    assert settings.profile() == "other" and settings.get("SBX_VAULT") == "Other"
-    monkeypatch.setenv("SBX_VAULT", "Env")
-    assert settings.get("SBX_VAULT") == "Env"
+    assert settings.profile() == "other" and settings.get("vault") == "Other"
+    monkeypatch.setenv("OG_VAULT", "Env")
+    assert settings.get("vault") == "Env"
 
 
 def test_every_profile_is_listed_with_its_own_settings(cfg):
     cfg()
-    assert settings.profiles() == {"home": {"SBX_TOKEN_NAME": "desk"}, "work": {"SBX_TOKEN_SUFFIX": "-work"}}
+    assert settings.profiles() == {"home": {"token_name": "desk"}, "work": {"token_suffix": "-work"}}
 
 
 @pytest.mark.parametrize(("text", "profile", "said"), [
@@ -59,13 +59,13 @@ def test_every_profile_is_listed_with_its_own_settings(cfg):
     (BOTH, "../up", "isn't a profile name"),
     ('profiles = "work"\n', "", "profiles must be"),
     ('[profiles]\nwork = "x"\n', "", "profiles.work must be"),
-    ('[profiles.work]\nSBX_VALT = "x"\n', "", "SBX_VALT isn't a setting og has"),
-    ('[profiles.work]\nSBX_VAULT = ["x"]\n', "", "SBX_VAULT must be text or a number"),
+    ('[profiles.work]\nvalt = "x"\n', "", "valt isn't a setting og has"),
+    ('[profiles.work]\nvault = ["x"]\n', "", "vault must be text or a number"),
 ])
 def test_a_profile_og_cant_use_stops_og(cfg, text, profile, said):
     cfg(text, profile=profile)
     with pytest.raises(settings.Unreadable, match=said.replace("[", r"\[").replace(".", r"\.")):
-        settings.get("SBX_VAULT")
+        settings.get("vault")
 
 
 def test_a_profile_file_og_cant_read_stops_og(cfg, home):
@@ -110,7 +110,7 @@ def test_a_profile_with_a_suffix_uses_only_items_ending_in_it(cfg):
 
 
 def test_an_items_owner_is_read_against_every_profiles_token_name(cfg):
-    cfg('[profiles.home]\nSBX_TOKEN_NAME = "den"\n[profiles.office]\n', profile="home")
+    cfg('[profiles.home]\ntoken_name = "den"\n[profiles.office]\n', profile="home")
     assert github.item_owner("github-pat-foo-office") == "foo"
     assert github.item_owner("github-pat-foo-office-den") == "foo-office"
     assert github.item_owner("github-pat-foo-desk") is None
@@ -118,37 +118,37 @@ def test_an_items_owner_is_read_against_every_profiles_token_name(cfg):
 
 def test_with_no_profile_and_no_token_name_og_cant_name_its_item_and_says_so(cfg):
     cfg()
-    with pytest.raises(settings.Unreadable, match="SBX_TOKEN_NAME"):
+    with pytest.raises(settings.Unreadable, match="token_name"):
         github.item("umbrella")
 
 
 def test_a_token_name_set_with_no_profile_still_names_its_item(cfg):
-    cfg('SBX_TOKEN_NAME = "home"\n')
+    cfg('token_name = "home"\n')
     assert github.items("umbrella") == ["github-pat-umbrella-home"]
 
 
 @pytest.mark.parametrize("name", ["Has-Caps", "a b", "-lead"])
 def test_a_token_name_that_isnt_a_plain_word_stops_og(cfg, name):
-    cfg(f'SBX_TOKEN_NAME = "{name}"\n')
-    with pytest.raises(settings.Unreadable, match="SBX_TOKEN_NAME"):
+    cfg(f'token_name = "{name}"\n')
+    with pytest.raises(settings.Unreadable, match="token_name"):
         github.item("umbrella")
 
 
 def test_another_profiles_name_that_cant_end_an_item_is_named_as_that_profile(cfg):
     cfg(BOTH + "[profiles.Team_A]\n", profile="home")
-    with pytest.raises(settings.Unreadable, match=r"profile 'Team_A'.*set SBX_TOKEN_NAME in that profile"):
+    with pytest.raises(settings.Unreadable, match=r"profile 'Team_A'.*set token_name in that profile"):
         github.items("hooli")
 
 
 def test_another_profile_without_a_token_name_of_its_own_takes_the_shared_one_not_its_name(cfg):
-    cfg('SBX_TOKEN_NAME = "common"\n[profiles.home]\nSBX_TOKEN_NAME = "desk"\n[profiles.work]\n', profile="home")
+    cfg('token_name = "common"\n[profiles.home]\ntoken_name = "desk"\n[profiles.work]\n', profile="home")
     assert github.items("foo") == ["github-pat-foo-desk", "github-pat-foo-common"]
     assert github.item_owner("github-pat-foo-common") == "foo"
 
 
 @pytest.mark.parametrize("text", [
-    '[profiles.home]\nSBX_TOKEN_NAME = "home-work"\n[profiles.work]\n',
-    '[profiles.work]\n[profiles.home]\nSBX_TOKEN_NAME = "home-work"\n',
+    '[profiles.home]\ntoken_name = "home-work"\n[profiles.work]\n',
+    '[profiles.work]\n[profiles.home]\ntoken_name = "home-work"\n',
 ])
 def test_endings_one_of_which_ends_the_other_stop_og_rather_than_misread_an_owner(cfg, text):
     cfg(text, profile="work")
@@ -157,19 +157,19 @@ def test_endings_one_of_which_ends_the_other_stop_og_rather_than_misread_an_owne
 
 
 def test_two_profiles_may_share_an_ending(cfg):
-    cfg('[profiles.a]\nSBX_TOKEN_NAME = "x"\n[profiles.b]\nSBX_TOKEN_NAME = "x"\n', profile="a")
+    cfg('[profiles.a]\ntoken_name = "x"\n[profiles.b]\ntoken_name = "x"\n', profile="a")
     assert github.items("foo") == ["github-pat-foo-x"]
 
 
 def test_an_ending_that_ends_another_without_a_dash_is_no_overlap(cfg):
     # the dash marks where an ending starts: github-pat-foo-awork can only be foo's awork token
-    cfg('[profiles.a]\nSBX_TOKEN_NAME = "awork"\n[profiles.work]\n', profile="a")
+    cfg('[profiles.a]\ntoken_name = "awork"\n[profiles.work]\n', profile="a")
     assert (github.item_owner("github-pat-foo-awork"), github.item_owner("github-pat-foo-work")) == ("foo", "foo")
 
 
 def test_a_profiles_empty_token_name_masks_the_shared_one_for_the_others_too(cfg):
     # as that profile reads it: its own setting, empty, wins over the shared one, so its name ends its items
-    cfg('SBX_TOKEN_NAME = "common"\n[profiles.home]\nSBX_TOKEN_NAME = "desk"\n[profiles.work]\nSBX_TOKEN_NAME = ""\n',
+    cfg('token_name = "common"\n[profiles.home]\ntoken_name = "desk"\n[profiles.work]\ntoken_name = ""\n',
         profile="home")
     assert github.items("foo") == ["github-pat-foo-desk", "github-pat-foo-work"]
     assert github.item_owner("github-pat-foo-work") == "foo"

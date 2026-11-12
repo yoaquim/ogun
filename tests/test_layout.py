@@ -39,7 +39,7 @@ OWN = ("sandbox-ssh.sh", "sandbox-docker.sh", "unsafe-probe.sh", "env/drop.sh", 
 def test_ogs_own_files_live_in_ogs_tree():
     assert SRC.parents[1] == paths.OGUN and paths.OGUN / "sandbox-scripts" == paths.SCRIPTS
     assert [rel for rel in OWN if not (paths.SCRIPTS / rel).is_file()] == []
-    assert (SRC / "net/baseline.env").is_file()
+    assert (SRC / "net/baseline.toml").is_file()
 
 
 def in_sandbox_scripts() -> list:

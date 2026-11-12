@@ -1,53 +1,38 @@
-"""This Mac's network baseline (og's baseline.env, beside this module): its allowed hosts, sbx's broad
+"""This Mac's network baseline (og's baseline.toml, beside this module, or a [baseline]
+table in config.toml): its allowed hosts, sbx's broad
 default rules taken out, and the ssh-agent guard, which keeps sbx from forwarding
 the Mac's agent."""
 
 import re
+import tomllib
 from pathlib import Path
 
-from ogun.core import config, log, sbx
+from ogun.core import log, sbx, settings
 from ogun.net import ruletable
 
-BASELINE_FILE = Path(__file__).with_name("baseline.env")   # og's own default
-LISTS = ("SBX_BASELINE_DOMAINS", "SBX_BASELINE_HTTP", "SBX_DEFAULT_RULES_OFF")
-_ENV_LINE = re.compile(r'^([A-Z_]+)="(.*)"$')
+BASELINE_FILE = Path(__file__).with_name("baseline.toml")   # og's own default
+LISTS = settings.BASELINE_KEYS
 
 
-def baseline_lists() -> dict[str, str]:
-    """The baseline's lists: baseline.env in og's config folder when there is
-    one, replacing og's own whole (no merge: what's allowed is one file's
-    content), else og's own."""
-    text = config.read_text("baseline.env")
-    if text is None:
-        got = lists_in(BASELINE_FILE.read_text())
-    else:
-        got = lists_in(text, "baseline.env")
-        for k in LISTS:   # each one og applies: a list left out is no list, never og's own
-            if k not in got:
-                raise config.unreadable("baseline.env", f'has no {k} (an empty list is {k}="")')
+def own() -> dict[str, list[str]]:
+    """og's own baseline, from baseline.toml beside this module."""
+    got = settings.check_baseline(tomllib.loads(BASELINE_FILE.read_text()).get("baseline"), "og's own baseline.toml")
+    if got is None:
+        raise ValueError("og's own baseline.toml has no [baseline] table")
     return got
 
 
-
-def lists_in(text: str, name: str = "") -> dict[str, str]:
-    """NAME="value" lines, as any other reader parses them; comments and blank lines
-    aside, any other line stops og (the config folder's file, name)."""
-    out = {}
-    for n, line in enumerate(text.splitlines(), 1):
-        m = _ENV_LINE.match(line)
-        if m:
-            out[m.group(1)] = m.group(2)
-        elif line.strip() and not line.lstrip().startswith("#"):
-            if name:
-                raise config.unreadable(name, f"line {n} isn't NAME=\"value\"")
-            raise ValueError(f"og's own baseline.env, line {n}, isn't NAME=\"value\"")
-    return out
+def baseline_lists() -> dict[str, list[str]]:
+    """The baseline's three lists: config.toml's [baseline] table when it has one,
+    replacing og's own whole (no merge: what's allowed is one table's content),
+    else og's own."""
+    return settings.baseline() or own()
 
 
-def _http_rules(spec: str) -> list[tuple[str, str, str]]:
-    """"<host>=<methods>[=<path glob>]", space-separated → (host, methods, path)."""
+def _http_rules(rules_: list[str]) -> list[tuple[str, str, str]]:
+    """"<host>=<methods>[=<path glob>]" each → (host, methods, path)."""
     rules = []
-    for hm in spec.split():
+    for hm in rules_:
         host, _, rest = hm.partition("=")
         methods, _, path = rest.partition("=")
         rules.append((host, methods, path))
@@ -60,11 +45,11 @@ def baseline() -> bool:
     sbx's default rules removed."""
     b = baseline_lists()
     # an empty list is no whole-host allow (sbx refuses an empty one), not a failure
-    domains = b["SBX_BASELINE_DOMAINS"].strip()
+    domains = ",".join(h for h in b["domains"] if h)
     if domains and not ruletable.allow_twice("policy", "allow", "network", domains):
         return False
     good = True
-    for host, methods, path in _http_rules(b["SBX_BASELINE_HTTP"]):
+    for host, methods, path in _http_rules(b["http"]):
         good = ruletable.allow_twice("policy", "allow", "network", host, "--method", methods, *(["--path", path] if path else [])) and good
     return default_rules_off() and good
 
@@ -74,7 +59,7 @@ def default_rules_off(why: str = "") -> bool:
     none is back. An sbx upgrade may restore one, so this runs with every
     baseline and on every attach."""
     good = True
-    for r in baseline_lists()["SBX_DEFAULT_RULES_OFF"].split():
+    for r in baseline_lists()["default_rules_off"]:
         if sbx.run("policy", "inspect", r).returncode:
             continue   # already gone
         # --force: its y/N prompt would sit unseen, or fail with no terminal
@@ -115,7 +100,7 @@ def default_rules_back() -> list[str]:
     upgrade can restore one). One sbx couldn't inspect reads as gone, as
     default_rules_off reads it."""
     back = []
-    for r in baseline_lists()["SBX_DEFAULT_RULES_OFF"].split():
+    for r in baseline_lists()["default_rules_off"]:
         p = sbx.run("policy", "inspect", r)
         if p.returncode == 0:
             back.append(r)
@@ -137,8 +122,8 @@ def baseline_missing() -> list[str] | None:
             if r["scope"] == "all" and r["decision"] == "allow" for res in r["res"]}
     hosts = {k[1] for k in have if k[0] == "network"}   # a whole-host allow covers any request to it
     b = baseline_lists()
-    out = [h for h in b["SBX_BASELINE_DOMAINS"].split(",") if h and h not in hosts]
-    out += [f"{h} {m}{f' {pth}' if pth else ''}" for h, m, pth in _http_rules(b["SBX_BASELINE_HTTP"])
+    out = [h for h in b["domains"] if h and h not in hosts]
+    out += [f"{h} {m}{f' {pth}' if pth else ''}" for h, m, pth in _http_rules(b["http"])
             if h not in hosts and key("http", h, m, pth) not in have]
     return sorted(set(out))
 

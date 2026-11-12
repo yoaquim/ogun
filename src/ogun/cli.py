@@ -3,7 +3,7 @@ included. setup.sh installs it as the command pyproject.toml declares.
 
 `-v` / `-vv` (anywhere in a command's arguments; for a bare og, before its
 flags) turn on more detail for everything this run starts: the level travels as
-OGUN_VERBOSE (src/ogun/core/log.py)."""
+OG_VERBOSE (src/ogun/core/log.py)."""
 
 import json
 import os
@@ -107,7 +107,7 @@ def style(argv: list[str]) -> int:
     return 0
 
 
-SKILLS_HELP = dict(about="Mirror your skills folder (SBX_SKILLS_DIR) into sbx's shared skills store, which every sandbox mounts, and lock it read-only.",
+SKILLS_HELP = dict(about="Mirror your skills folder (skills_dir) into sbx's shared skills store, which every sandbox mounts, and lock it read-only.",
                    forms=[("og skills", "after a skill changes; a create does it too")],
                    notes=["Read-only is what stops one sandbox planting a skill for the rest: sandboxes mount the store "
                           "read-write, and this mirror is its only writer."],
@@ -123,7 +123,7 @@ def skills(argv: list[str]) -> int:
         skills_usage("og skills takes no arguments")
         return 1
     if not create.skills_dir():
-        log.err("og skills: no skills folder is set (SBX_SKILLS_DIR names the folder to mirror)")
+        log.err("og skills: no skills folder is set (skills_dir names the folder to mirror)")
         return 1
     return 0 if create.skills() else 1
 
@@ -137,22 +137,22 @@ def _mcp_registry() -> None:
 
 @internal.command("baseline")
 def _baseline() -> None:
-    """The baseline og applies, as NAME="value" lines, its settings' hosts in: what a
-    check of the live rules compares them with."""
+    """The baseline og applies, as a [baseline] table to paste into config.toml and edit."""
     from ogun.net import baseline
     b = baseline.baseline_lists()
-    print("".join(f'{k}="{b.get(k, "")}"\n' for k in baseline.LISTS), end="")
+    # a JSON list of strings is a TOML array
+    print("[baseline]\n" + "".join(f"{k} = {json.dumps(b[k])}\n" for k in baseline.LISTS), end="")
 
 
 @internal.command("paths")
 def _paths() -> None:
     """The folders the shell's completion (or an installer) looks in, as og resolves them,
     a NAME<tab>path line each: one og start gives all four (TEMPLATES: the recipes
-    `og template <Tab>` offers; SBX_PROJECTS: every project folder, folder[=owner]
+    `og template <Tab>` offers; PROJECTS: every project folder, folder[=owner]
     colon-joined as the setting writes them)."""
     from ogun.sandbox import template
-    vals = {"SBX_EXCHANGE": folders.exchange(), "SBX_PROJECTS": ":".join(f + (f"={o}" if o else "") for f, o in paths.roots()),
-            "SBX_OGUN_DIR": paths.state_dir(), "TEMPLATES": template.recipes_dir()}
+    vals = {"EXCHANGE": folders.exchange(), "PROJECTS": ":".join(f + (f"={o}" if o else "") for f, o in paths.roots()),
+            "STATE": paths.state_dir(), "TEMPLATES": template.recipes_dir()}
     print("".join(f"{k}\t{v}\n" for k, v in vals.items()), end="")
 
 
@@ -160,7 +160,7 @@ _VERBOSE = {"-v": 1, "-vv": 2, "--verbose": 1}
 
 
 def _verbosity(args: list[str], anywhere: bool) -> list[str]:
-    """Take -v / -vv / --verbose out of the arguments into OGUN_VERBOSE: every
+    """Take -v / -vv / --verbose out of the arguments into OG_VERBOSE: every
     one before the command, and anywhere in a command's own arguments."""
     level, rest, leading = log.verbosity(), [], True
     for a in args:
@@ -170,7 +170,7 @@ def _verbosity(args: list[str], anywhere: bool) -> list[str]:
         leading = False
         rest.append(a)
     if level:
-        os.environ["OGUN_VERBOSE"] = str(min(level, 2))
+        os.environ["OG_VERBOSE"] = str(min(level, 2))
     return rest
 
 

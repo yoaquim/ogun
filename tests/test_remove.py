@@ -26,7 +26,7 @@ def sb(home, fakes, monkeypatch):
     doesn't know."""
     e = home / "exchange"
     e.mkdir()
-    monkeypatch.setenv("SBX_EXCHANGE", str(e))
+    monkeypatch.setenv("OG_EXCHANGE", str(e))
 
     def set_(out="", code=0, delay=0, ls_fail=False, marked=False, rm_fail=False, cp=None):
         s = fakes.sbx
@@ -141,7 +141,7 @@ def test_an_sbx_that_cant_list_keeps_it_gone_is_proven_never_assumed(og, sb):
 
 def test_a_check_past_its_time_limit_keeps_it_exit_124_sbx_rm_never_run(og, sb, monkeypatch):
     e, set_ = sb
-    monkeypatch.setenv("SBX_RM_PROBE_TIMEOUT", "1")
+    monkeypatch.setattr("ogun.sandbox.remove.PROBE_TIMEOUT", 1)
     s = set_(delay=5)
     box("run1")
     code, out, err = og("rm", "run1", "--if-clean")
@@ -187,7 +187,7 @@ def test_attachs_rm_gets_a_reason_to_keep_it_from_the_same_failed_check(sb):
 
 def test_one_past_its_time_limit_says_the_sandbox_didnt_answer_in_time(og, sb, monkeypatch):
     e, set_ = sb
-    monkeypatch.setenv("SBX_RM_BOOT_TIMEOUT", "1")
+    monkeypatch.setattr("ogun.sandbox.remove.BOOT_TIMEOUT", 1)
     set_(delay=5)
     box("run1")
     code, out, err = og("rm", "run1")
@@ -306,7 +306,7 @@ def test_a_record_that_cant_be_written_never_fails_the_removal_it_records(og, sb
     set_()
     box("run1")
     (home / "not-a-dir").write_text("")
-    monkeypatch.setenv("SBX_OGUN_DIR", str(home / "not-a-dir"))
+    monkeypatch.setenv("XDG_STATE_HOME", str(home / "not-a-dir"))
     assert og("rm", "run1", "--force")[0] == 0 and not boxed(e, "run1")
 
 
@@ -325,7 +325,7 @@ exit 0"""
 @pytest.fixture
 def probe(tmp_path, stand_in, real_git, monkeypatch):
     """The check as og rm sends it, against a pushed checkout with a Claude Code worktree
-    (under SBX_PROBE_ROOTS, never this machine's own), a fake HOME for the jobs,
+    (under OG_PROBE_ROOTS, never this machine's own), a fake HOME for the jobs,
     and ps listing Claude's own ptys (and PS_TTY, a person's terminal, when set)."""
     stand_in("ps", PS)
     for k in ("AUTHOR", "COMMITTER"):
@@ -356,7 +356,7 @@ def probe(tmp_path, stand_in, real_git, monkeypatch):
             (h / f".claude/jobs/j{i}").mkdir(parents=True)
             (h / f".claude/jobs/j{i}/state.json").write_text(json.dumps({"state": state}))
         h.mkdir(exist_ok=True)
-        env = {**os.environ, "HOME": str(h), "SBX_PROBE_ROOTS": str(roots), "PS_TTY": tty}
+        env = {**os.environ, "HOME": str(h), "OG_PROBE_ROOTS": str(roots), "PS_TTY": tty}
         return subprocess.run(["bash", "-c", PROBE.read_text(), "_", *mode], capture_output=True, text=True, env=env).stdout.strip()
 
     return run, r, wt, git
@@ -366,7 +366,7 @@ def test_each_of_several_space_separated_roots_is_looked_in(probe, tmp_path):
     _, r, _, _ = probe
     subprocess.run(["git", "init", "-q", str(tmp_path / "second/repo")], check=True)
     (tmp_path / "second/repo/new.txt").write_text("n\n")
-    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "SBX_PROBE_ROOTS": f"{r.parent} {tmp_path / 'second'}"}
+    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "OG_PROBE_ROOTS": f"{r.parent} {tmp_path / 'second'}"}
     out = subprocess.run(["bash", "-c", PROBE.read_text(), "_", "--stopped"], capture_output=True, text=True, env=env).stdout
     assert "/second/repo: 1 uncommitted/untracked file(s)" in out
 
@@ -376,14 +376,14 @@ def test_the_sandboxs_own_workspace_is_looked_in_wherever_it_lives(probe, tmp_pa
     ws = tmp_path / "elsewhere/proj"
     subprocess.run(["git", "init", "-q", str(ws)], check=True)
     (ws / "new.txt").write_text("n\n")
-    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "SBX_PROBE_ROOTS": str(tmp_path / "roots")}
+    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "OG_PROBE_ROOTS": str(tmp_path / "roots")}
     out = subprocess.run(["bash", "-c", PROBE.read_text(), "_", "--root", str(ws), "--stopped"],
                          capture_output=True, text=True, env=env).stdout
     assert f"{ws}: 1 uncommitted/untracked file(s)" in out
 
 
 def test_a_root_with_no_folder_after_it_ends_rather_than_hangs(probe, tmp_path):
-    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "SBX_PROBE_ROOTS": str(tmp_path / "roots")}
+    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "OG_PROBE_ROOTS": str(tmp_path / "roots")}
     for args in (["--root"], ["--stopped", "--root"]):
         p = subprocess.run(["bash", "-c", PROBE.read_text(), "_", *args], capture_output=True, text=True, env=env, timeout=10)
         assert p.returncode == 0 and p.stdout == ""
@@ -392,7 +392,7 @@ def test_a_root_with_no_folder_after_it_ends_rather_than_hangs(probe, tmp_path):
 def test_a_workspace_under_a_usual_root_is_reported_once(probe, tmp_path):
     _, r, _, _ = probe
     (r / "loose.txt").write_text("x\n")
-    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "SBX_PROBE_ROOTS": str(r.parent)}
+    env = {**os.environ, "HOME": str(tmp_path / "phome"), "PS_TTY": "", "OG_PROBE_ROOTS": str(r.parent)}
     out = subprocess.run(["bash", "-c", PROBE.read_text(), "_", "--root", str(r), "--stopped"],
                          capture_output=True, text=True, env=env).stdout
     assert out.count(f"{r}: ") == 1

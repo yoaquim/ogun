@@ -27,9 +27,9 @@ from ogun.secrets import sshkeys
 def box(fakes, home, monkeypatch):
     """Sandbox box, reaching no agent, with no key folder; provisioned by a provision
     command."""
-    monkeypatch.setenv("SBX_PROVISION", "~/agent-config/provision.sh --all")
-    monkeypatch.setenv("SBX_SSH_DIR", str(home / "ssh"))
-    monkeypatch.setenv("SBX_EXCHANGE", str(home / "exchange"))
+    monkeypatch.setenv("OG_PROVISION", "~/agent-config/provision.sh --all")
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: home / "ssh")
+    monkeypatch.setenv("OG_EXCHANGE", str(home / "exchange"))
     fakes.sbx.answer(["exec", "box"], stdout="agent:none\n", has=sshkeys.PROBE)
     return fakes.sbx
 
@@ -40,7 +40,7 @@ def ran(s, text: str) -> list[int]:
 
 
 def test_setup_stops_before_anything_runs_when_the_sandbox_sees_the_agent(fakes, home, monkeypatch):
-    monkeypatch.setenv("SBX_SSH_DIR", str(home / "ssh"))
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: home / "ssh")
     fakes.sbx.answer(["exec", "box"], stdout="agent:present\n", has=sshkeys.PROBE)
     assert base.setup("box") is False
     assert len(fakes.sbx.calls) == 1
@@ -58,14 +58,14 @@ def test_setup_sets_ssh_up_only_when_the_key_folder_exists(box, home):
 def test_setup_refuses_copying_nothing_when_a_protected_key_has_appeared_there(box, home, monkeypatch):
     (home / "ssh/sandbox").mkdir(parents=True)
     subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(home / "ssh/signer")], check=True)
-    monkeypatch.setenv("SBX_PROTECTED_KEYS", str(home / "ssh/signer"))
+    monkeypatch.setenv("OG_PROTECTED_KEYS", str(home / "ssh/signer"))
     shutil.copy(home / "ssh/signer", home / "ssh/sandbox/id")
     assert base.setup("box") is False
     assert not ran(box, "sandbox-ssh.sh")
 
 
 def test_og_v_shows_each_sbx_call_setup_makes(box, capfd, monkeypatch):
-    monkeypatch.setenv("OGUN_VERBOSE", "1")
+    monkeypatch.setenv("OG_VERBOSE", "1")
     assert base.setup("box")
     out = "".join(capfd.readouterr())
     assert "$ sbx exec box bash -lc 'sudo apt-get" in out and "$ sbx exec box bash -lc 'mkdir -p ~/.config/sbx" in out
@@ -126,7 +126,7 @@ def test_ssh_keys_from_the_folder_are_set_up_a_failure_said_and_setup_goes_on(bo
 def test_ssh_keys_stop_setup_when_a_protected_key_is_in_the_folder(box, home, monkeypatch):
     (home / "ssh/sandbox").mkdir(parents=True)
     subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(home / "ssh/signer")], check=True)
-    monkeypatch.setenv("SBX_PROTECTED_KEYS", str(home / "ssh/signer"))
+    monkeypatch.setenv("OG_PROTECTED_KEYS", str(home / "ssh/signer"))
     shutil.copy(home / "ssh/signer", home / "ssh/sandbox/id")
     assert base.ssh_keys("box") is False and not ran(box, "sandbox-ssh.sh")
 
@@ -146,7 +146,7 @@ def test_setup_installs_only_ogs_own_apt_tools_by_default(box):
 
 
 def test_the_apt_tools_setting_adds_its_own_after_ogs(box, monkeypatch):
-    monkeypatch.setenv("SBX_APT_TOOLS", "make  htop jq")
+    monkeypatch.setenv("OG_APT_TOOLS", "make  htop jq")
     assert base.setup("box")
     assert ran(box, "install -y -qq jq socat make htop")
 
@@ -177,7 +177,7 @@ def test_a_failing_update_warns_with_its_output_and_setup_goes_on(box, capfd):
 def hung(box, monkeypatch):
     """The update never returns within its one second; its run id is fixed, so a log
     line can name it."""
-    monkeypatch.setenv("SBX_CLAUDE_UPDATE_TIMEOUT", "1")
+    monkeypatch.setattr("ogun.sandbox.base.UPDATE_TIMEOUT", 1)
     monkeypatch.setattr(base.time, "time", lambda: 100)
     monkeypatch.setattr(base.random, "randrange", lambda n: 7)
     box.answer(["exec", "box"], delay=5, has="claude update")
@@ -224,7 +224,7 @@ def inside(tmp_path, monkeypatch):
     monkeypatch.setenv("PATH", f"{b}{os.pathsep}{os.environ['PATH']}")
     monkeypatch.setenv("HOME", str(h))
     log = tmp_path / "update.log"
-    monkeypatch.setenv("SBX_CLAUDE_UPDATE_LOG", str(log))
+    monkeypatch.setattr("ogun.sandbox.base.UPDATE_LOG", str(log))
 
     def claude(rc: int):
         (h / ".local/bin/claude").write_text(f"""#!/bin/sh
@@ -295,7 +295,7 @@ exit 0
             h.mkdir()
             homes.append(h)
         e = {**os.environ, "HOME": str(h), "PATH": f"{b}{os.pathsep}{os.environ['PATH']}",
-             "SBX_PERSISTENT_ENV": str(h / "env.sh"), "HTTPS_PROXY": "http://gateway.docker.internal:3128",
+             "OG_PERSISTENT_ENV": str(h / "env.sh"), "HTTPS_PROXY": "http://gateway.docker.internal:3128",
              "PROXY_CA_CERT_B64": base64.b64encode(CA_PEM.encode()).decode(), **env}
         p = subprocess.run(["bash", str(DOCKER)], env=e, capture_output=True, text=True)
         settled(h)
@@ -473,7 +473,7 @@ def test_no_docker_nothing_written(tmp_path):
     h.mkdir()
     (h / "env.sh").write_text("x\n")
     p = subprocess.run([str(b / "bash"), str(DOCKER)], capture_output=True, text=True,
-                       env={"HOME": str(h), "PATH": str(b), "SBX_PERSISTENT_ENV": str(h / "env.sh"),
+                       env={"HOME": str(h), "PATH": str(b), "OG_PERSISTENT_ENV": str(h / "env.sh"),
                             "HTTPS_PROXY": "http://p:3128"})
     assert p.returncode == 0
     assert not (h / ".docker").exists() and (h / "env.sh").read_text() == "x\n"

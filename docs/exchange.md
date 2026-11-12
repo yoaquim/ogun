@@ -108,7 +108,7 @@ and make opening a file a deliberate act.
 ## What agents are told
 
 og tells a sandbox's agent nothing: its instructions are whatever the provision command
-(`SBX_PROVISION`) sets up. Ones that use the exchange well say:
+(`provision`) sets up. Ones that use the exchange well say:
 
 - deliverables go in your own `out/`;
 - handoffs go in your own `shared/<name>/`;

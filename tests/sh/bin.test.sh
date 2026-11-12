@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # og as an installed command: setup.sh puts it in og's own environment and links it
-# onto PATH as og and ogun (~/.local/bin, or OGUN_BIN).
+# onto PATH as og and ogun (~/.local/bin, or OG_BIN).
 #
 # What this suite pins: setup's links, and that og runs from any folder, through any
 # link, and with cron's bare PATH (Homebrew's folders put in front).
@@ -50,21 +50,21 @@ else
 fi
 
 
-# ── setup puts og on PATH: og and ogun, links to the venv's og, in OGUN_BIN ──
-# the pinned uv and Pythons stay where setup keeps them (OGUN_TOOLS): nothing downloads again
-export OGUN_TOOLS="${OGUN_TOOLS:-$HOME/.local/share/ogun}"
+# ── setup puts og on PATH: og and ogun, links to the venv's og, in OG_BIN ──
+# the pinned uv and Pythons stay where setup keeps them (OG_TOOLS): nothing downloads again
+export OG_TOOLS="${OG_TOOLS:-$HOME/.local/share/ogun}"
 setup_links() { local b="$FIX/onpath" o; rm -rf "$b"
-  o=$(OGUN_BIN="$b" bash "$OGUN/setup.sh" 2>&1) || { echo "$o"; return 1; }
+  o=$(OG_BIN="$b" bash "$OGUN/setup.sh" 2>&1) || { echo "$o"; return 1; }
   [ "$(readlink "$b/og")" = "$OG" ] && [ "$(readlink "$b/ogun")" = "$OG" ] \
     && [ "$(PATH="$b:$FIX/bin:$PATH" og ls --all)" = "sbx ls --all" ] && [ "$(PATH="$b:$FIX/bin:$PATH" ogun ls --all)" = "sbx ls --all" ]; }
-expect_cmd 0 "setup links og and ogun in OGUN_BIN to the venv's og, and both run" setup_links
+expect_cmd 0 "setup links og and ogun in OG_BIN to the venv's og, and both run" setup_links
 setup_again() { local b="$FIX/again" o; rm -rf "$b"; mkdir -p "$b"
   ln -s /nowhere/og "$b/og"; printf 'mine\n' > "$b/ogun"
-  o=$(OGUN_BIN="$b" bash "$OGUN/setup.sh" 2>&1) || { echo "$o"; return 1; }
+  o=$(OG_BIN="$b" bash "$OGUN/setup.sh" 2>&1) || { echo "$o"; return 1; }
   [ "$(readlink "$b/og")" = "$OG" ] && [ "$(cat "$b/ogun")" = mine ] && grep -q "$b/ogun.*not a link" <<<"$o"; }
 expect_cmd 0 "…an old link is replaced; a file of yours in the way is left, and said" setup_again
-setup_nopath() { local o; o=$(OGUN_BIN="" HOME="$FIX/nohome" bash "$OGUN/setup.sh" 2>&1) || { echo "$o"; return 1; }
+setup_nopath() { local o; o=$(OG_BIN="" HOME="$FIX/nohome" bash "$OGUN/setup.sh" 2>&1) || { echo "$o"; return 1; }
   [ ! -e "$FIX/nohome/.local/bin/og" ]; }
-expect_cmd 0 "…and an empty OGUN_BIN links nothing (a sandbox building og only for its tests)" setup_nopath
+expect_cmd 0 "…and an empty OG_BIN links nothing (a sandbox building og only for its tests)" setup_nopath
 
 summarize

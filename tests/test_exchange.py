@@ -43,8 +43,8 @@ def ex(home, fakes, stand_in, monkeypatch):
     only --force (or a person's y) gets past."""
     e = home / "exchange"
     e.mkdir()
-    monkeypatch.setenv("SBX_EXCHANGE", str(e))
-    monkeypatch.setenv("SBX_TAKE_DEST", str(home / "downloads"))
+    monkeypatch.setenv("OG_EXCHANGE", str(e))
+    monkeypatch.setenv("OG_TAKE_DEST", str(home / "downloads"))
     (home / "downloads").mkdir()
     (home / "Projects/personal/fern").mkdir(parents=True)
     stand_in("file", FILE)
@@ -867,7 +867,7 @@ def test_og_scan_says_each_change_or_that_there_was_nothing_and_with_no_exchange
     assert code == 0 and "quarantined fern/tool.sh" in out + err and "✓ committed shared/fern's history" in out + err
     assert "nothing to change" not in out + err
     assert "".join(og("scan")[1:]).strip() == "nothing to change in shared/"
-    monkeypatch.setenv("SBX_EXCHANGE", str(home / "no-exchange"))
+    monkeypatch.setenv("OG_EXCHANGE", str(home / "no-exchange"))
     code, out, err = og("scan")
     assert code == 1 and (out + err).strip() == f"og scan: no exchange at {log.path(home / 'no-exchange')}"
 

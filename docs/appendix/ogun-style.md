@@ -122,12 +122,12 @@ arguments (`og sh`: only before it, since the words after its name are the comma
 what `sbx` printed. A script og sends to run inside a sandbox shows as its line count, not its
 text; a call that failed shows its exit in red. Each file og changes on this Mac shows too, as
 `  file  removed ~/…`. These go to stderr, and travel to every process the command starts as
-`OGUN_VERBOSE`. Every `sbx` call goes through `src/ogun/core/sbx.py`, so every command gets
+`OG_VERBOSE`. Every `sbx` call goes through `src/ogun/core/sbx.py`, so every command gets
 this for free.
 
 ## The record
 
-Every change og makes on this Mac is one line in `~/.config/sbx/ogun/og.log` (`SBX_OGUN_DIR`):
+Every change og makes on this Mac is one line in `~/.local/state/ogun/og.log`:
 when, the command as you typed it, and what changed (`cub removed`, `cub may reach
 docs.example.com (reading only)`, `policy applied: …`). `og log` replays the last 20 in classic
 format, a section a day, as plain lines with the command under each (piped, one whole line

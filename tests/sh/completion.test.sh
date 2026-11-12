@@ -29,8 +29,8 @@ mkdir -p "$FIX/home/.config/ogun" && ln -s "$OGUN/tests/fixtures/templates" "$FI
 # comp <word>… — complete the LAST word of `og <words>`, in $FIX/cwd; prints one
 # candidate per line (sorted), then `compopt:<args>` if compopt was called.
 comp() {
-  ( cd "$FIX/cwd" && HOME="$FIX/home" PATH="$FIX/bin:$PATH" SBX_EXCHANGE="$FIX/ex" SBX_PROJECTS="${PROJ:-$FIX/projects}" bash -c '
-      [[ -n "${COMP_FILE_ONLY:-}" ]] && unset SBX_EXCHANGE SBX_PROJECTS   # the settings file alone says where
+  ( cd "$FIX/cwd" && HOME="$FIX/home" PATH="$FIX/bin:$PATH" OG_EXCHANGE="$FIX/ex" OG_PROJECTS="${PROJ:-$FIX/projects}" bash -c '
+      [[ -n "${COMP_FILE_ONLY:-}" ]] && unset OG_EXCHANGE OG_PROJECTS   # the settings file alone says where
       . "$OGUN/completion.bash"
       compopt() { printf "compopt:%s\n" "$*" >> "$FIX/compopt.log"; }
       rm -f "$FIX/compopt.log"
@@ -97,7 +97,7 @@ expect_cmd 0 "og give: --clip first or after the sandbox, with the sandboxes and
   bash -c 'has "$(comp give --c)" --clip && has "$(comp give cub --c)" --clip && o=$(comp give ""); has "$o" cub && has "$o" --clip'
 expect_cmd 0 "…og allow offers --read-only after the sandbox; og log its own flags" \
   bash -c 'only "$(comp allow cub "")" "--read-only " && only "$(comp log "")" "--json -n -v " && [ -z "$(comp log -n "")" ]'
-# og mcp auth's servers come from og (_sbx_mcp_registry): this Mac's registry, its valid names only
+# og mcp auth's servers come from og (_og_mcp_registry): this Mac's registry, its valid names only
 mkdir -p "$FIX/mcp/fern" "$FIX/mcp/cub"
 printf '{"mcp": ["notes"], "repos": {"fern": {"path": "%s", "mcp": ["db-fern"]}, "cub": {"path": "%s", "mcp": ["db-cub", "bad name"]}}}\n' \
   "$FIX/mcp/fern" "$FIX/mcp/cub" > "$FIX/mcp/registry.json"
@@ -110,7 +110,7 @@ if [[ -n "$OG_PY" ]]; then
     bash -c 'only "$(comp mcp auth "")" "--all db-cub db-fern notes "'
   # the folders completion reads are og's: set only in og's settings file, they're still the ones it reads
   mkdir -p "$FIX/home/.config/ogun" "$FIX/ex2/boxes/cub/out" "$FIX/projects2/acme"; touch "$FIX/ex2/boxes/cub/out/from-the-file.txt"
-  printf 'SBX_EXCHANGE = "%s"\nSBX_PROJECTS = "%s"\n' "$FIX/ex2" "$FIX/projects2" > "$FIX/home/.config/ogun/config.toml"
+  printf 'exchange = "%s"\nprojects = "%s"\n' "$FIX/ex2" "$FIX/projects2" > "$FIX/home/.config/ogun/config.toml"
   expect_cmd 0 "og take cub <TAB> and --org <TAB> read the exchange and Projects og's settings file names" \
     bash -c 'o=$(COMP_FILE_ONLY=1 comp take cub ""); has "$o" from-the-file.txt && ! has "$o" summary.pdf \
              && only "$(COMP_FILE_ONLY=1 comp cub --org "")" "acme "'
@@ -139,15 +139,15 @@ expect_cmd 0 "og give<TAB> (the command word itself) still completes commands, n
 
 # ── speed: a Tab starts no program for what it already knows ──
 # the sandbox names og last saw, kept in a file (src/ogun/core/sbx.py): no call to sbx
-cached() { mkdir -p "$TEST_TMP/names"; printf 'kept1\nkept2\n' > "$TEST_TMP/names/sandbox-names"; rm -f "$FIX/sbx.log"
-  local o; o=$(SBX_OGUN_DIR="$TEST_TMP/names" comp attach "")
+cached() { mkdir -p "$TEST_TMP/names/ogun"; printf 'kept1\nkept2\n' > "$TEST_TMP/names/ogun/sandbox-names"; rm -f "$FIX/sbx.log"
+  local o; o=$(XDG_STATE_HOME="$TEST_TMP/names" comp attach "")
   has "$o" kept1 && has "$o" kept2 && ! has "$o" cub && [ ! -e "$FIX/sbx.log" ]; }
 expect_cmd 0 "sandbox names come from the file og keeps, and a Tab never asks sbx" cached
-fallback() { rm -f "$FIX/sbx.log"; local o; o=$(SBX_OGUN_DIR="$TEST_TMP/no-names" comp attach "")
+fallback() { rm -f "$FIX/sbx.log"; local o; o=$(XDG_STATE_HOME="$TEST_TMP/no-names" comp attach "")
   has "$o" cub && grep -q '^ls' "$FIX/sbx.log"; }
 expect_cmd 0 "…with no file yet (og hasn't listed on this Mac), they come from sbx, as before" fallback
 no_og() { bash -c '. "$OGUN/completion.bash"
-  _sbx_og() { echo "og ran" >> "$FIX/og.log"; }
+  _og_run() { echo "og ran" >> "$FIX/og.log"; }
   COMP_WORDS=(og t); COMP_CWORD=1; cur=t; _og_complete; COMP_WORDS=(og help ""); COMP_CWORD=2; _og_complete
   COMP_WORDS=(og rm --h); COMP_CWORD=2; _og_complete'; [ ! -e "$FIX/og.log" ]; }
 expect_cmd 0 "…and the command list is text: completing a command, help's argument or --help starts no og" no_og
@@ -169,10 +169,11 @@ expect_cmd 0 "completion.bash adds only completion: its helpers, its command lis
            . "$OGUN/completion.bash"
            now_f=$(declare -F | cut -d" " -f3 | sort); now_v=$(compgen -v | sort)
            added=$(comm -13 <(printf "%s\n" "$mid_f") <(printf "%s\n" "$now_f") | paste -sd" " -)
-           want="_og_complete _og_complete_args _sbx_comp_cmds _sbx_comp_names _sbx_comp_owners _sbx_comp_words _sbx_dirs _sbx_exchange_box _sbx_mcp_registry _sbx_name_chars _sbx_og _sbx_template_name_ok _sbx_template_recipes"
+           want=$(printf "%s\n" _og_complete _og_complete_args _og_comp_cmds _og_comp_names _og_comp_owners _og_comp_words _og_dirs \
+                  _og_exchange_box _og_mcp_registry _og_name_chars _og_run _og_template_name_ok _og_template_recipes | sort | paste -sd" " -)
            [ "$added" = "$want" ] || { echo "functions added: [$added]"; exit 1; }
            newv=$(comm -13 <(printf "%s\n" "$mid_v") <(printf "%s\n" "$now_v") | grep -vxE "mid_f|mid_v|now_f|_" | paste -sd" " -)
-           [ "$newv" = "_SBX_COMP_CMDS _SBX_OG" ] || { echo "variables added: [$newv]"; exit 1; }
+           [ "$newv" = "_OG_COMP_CMDS _OG_DIR" ] || { echo "variables added: [$newv]"; exit 1; }
            [ "$(complete -p | grep -E " -F _og_complete " | sed "s/.* //" | sort | paste -sd" " -)" = "og ogun" ] \
              && ! complete -p | grep -q _completesbx'
 

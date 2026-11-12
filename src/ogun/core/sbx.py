@@ -85,7 +85,7 @@ def run(*args: str, show: bool = False, timeout: float | None = None, cap: int |
 # ── the sandbox names tab completion offers: what sbx last listed, kept by og ──
 
 def names_file():
-    """Read by tab completion (the shell's _sbx_comp_names), so a Tab never
+    """Read by tab completion (the shell's _og_comp_names), so a Tab never
     asks the sandbox daemon: what the last `sbx ls` og ran listed, less what og
     removed since."""
     from ogun.core import paths  # here: paths would otherwise load with every sbx call

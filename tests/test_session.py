@@ -17,7 +17,7 @@ from ogun.sandbox import session
 
 
 def test_the_provision_command_runs_inside_the_sandbox_as_written(fakes, monkeypatch):
-    monkeypatch.setenv("SBX_PROVISION", "/opt/setup.sh --quiet")
+    monkeypatch.setenv("OG_PROVISION", "/opt/setup.sh --quiet")
     p = session.provision("web")
     assert p.returncode == 0
     assert fakes.sbx.calls == [["exec", "web", "bash", "-lc", "/opt/setup.sh --quiet"]]
@@ -36,7 +36,7 @@ def at(home, registry, fakes, og, real_git, monkeypatch):
     subprocess.run(["git", "-C", str(ws), "remote", "add", "origin", "https://github.com/octocat/box.git"], check=True)
     shutil.copy(FIXTURES / "appa.lock", home / ".config/ogun/")
     registry({"box": {"owner": "personal", "repos": {"read": ["personal/notes"]}}})
-    monkeypatch.setenv("SBX_EXCHANGE", str(home / "exchange"))
+    monkeypatch.setenv("OG_EXCHANGE", str(home / "exchange"))
     s = fakes.sbx
 
     def run(*args, back=(), rm_fail=False, ensure=0, activate=0, listed=True, rc=0, relay=""):

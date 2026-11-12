@@ -149,13 +149,14 @@ def test_og_policy_passes_once_forwarding_reads_off(og, fakes):
 
 
 def test_the_baseline_leaves_out_npm_and_aws(home):
-    domains = baseline.baseline_lists()["SBX_BASELINE_DOMAINS"].split(",")
+    domains = baseline.baseline_lists()["domains"]
     assert "registry.npmjs.org" not in domains and "*.amazonaws.com" not in domains
 
 
-def test_og_internal_baseline_prints_the_lists_og_applies_as_it_applies_them(og):
+def test_og_internal_baseline_prints_the_table_og_applies_ready_for_config_toml(og):
+    import tomllib
     code, out, _ = og("internal", "baseline")
-    assert code == 0 and [line.split("=")[0] for line in out.splitlines()] == list(baseline.LISTS)
+    assert code == 0 and tomllib.loads(out) == {"baseline": baseline.baseline_lists()}
 
 
 
@@ -182,7 +183,7 @@ def test_github_is_read_only_for_every_sandbox_reads_and_the_clone_post_never_wh
     assert ["github.com", "--method", "GET,HEAD"] in allows(s)
     assert ["github.com", "--method", "POST", "--path", "/*/*/git-upload-pack"] in allows(s)
     assert not any("github.com" in a.split(",") for c in allows(s) if "--method" not in c for a in c)
-    assert "github.com" not in baseline.baseline_lists()["SBX_BASELINE_DOMAINS"].split(",")
+    assert "github.com" not in baseline.baseline_lists()["domains"]
 
 
 def test_og_policy_names_every_allow_covering_github_with_its_removal_and_removes_none(og, fakes):

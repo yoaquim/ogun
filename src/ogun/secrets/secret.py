@@ -52,7 +52,7 @@ PASS_HELP = dict(
         ("… --expose", "the real value in the sandbox's environment instead, readable inside it: only for keys used "
                        "inside the sandbox (decryption, signing). Takes no host"),
         ("… --item <name>", "the 1Password item; asked for when left out"),
-        ("… --vault <v>, --field <f>", "where in 1Password: vault Sandbox (or $SBX_VAULT), field credential"),
+        ("… --vault <v>, --field <f>", "where in 1Password: vault Sandbox (or the vault setting), field credential"),
         ("… -p, --paste", "paste the value at a hidden prompt (one line), or pipe it in for multi-line keys: pbpaste | og pass …"),
         ("og pass <name> <ENV_VAR> --rm", "remove it: out of sbx, and out of the sandbox's environment"),
     ],

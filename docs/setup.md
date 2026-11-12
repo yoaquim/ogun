@@ -36,14 +36,14 @@ Then [Install](README.md#install) covers the rest.
 
 ## Token items in 1Password
 
-Each sandbox gets one GitHub token, read from an item in the vault `SBX_VAULT` names
+Each sandbox gets one GitHub token, read from an item in the vault `vault` names
 (`Sandbox` unset). The item is an **API Credential** (og reads its `credential` field), and og
 finds it by name, so name each one `github-pat-<owner>-<ending>`:
 
 - `<owner>` is the folder its repos are under in your project folders (`acme` for
   `~/Projects/acme/<repo>`), or `personal` for the personal token: the `personal` folder's
   repos, and any repo whose folder names no owner.
-- `<ending>` is this Mac's token name: `SBX_TOKEN_NAME`, else its og profile's name. Two Macs
+- `<ending>` is this Mac's token name: `token_name`, else its og profile's name. Two Macs
   with their own tokens keep apart that way: `github-pat-acme-home`, `github-pat-acme-work`.
 
 `og token <owner>` opens GitHub's form already filled in and says which item to save the token
@@ -52,7 +52,7 @@ in; [Secrets](secrets.md#github-tokens) has the token's settings and why.
 ## What a provision command should tell the agent
 
 og tells a sandbox's agent nothing itself. Whatever instructions it follows come from your
-provision command (`SBX_PROVISION`), which runs inside every sandbox at create and on every
+provision command (`provision`), which runs inside every sandbox at create and on every
 attach. Some of og's guardrails work best when the agent knows them:
 
 - **A blocked request** comes back as HTTP 403 naming the domain. Ask the agent to stop, not

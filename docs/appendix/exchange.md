@@ -60,8 +60,8 @@ the live file, which a running sandbox could rewrite between the check and the r
 
 | Setting | Default | Override |
 |---|---|---|
-| root | `~/sandboxes.noindex` | `SBX_EXCHANGE`. Keep the `.noindex` suffix, or add the root to Spotlight's Search Privacy list by hand |
-| `ogun take` destination | `~/Downloads`, name-deduped | `SBX_TAKE_DEST` |
+| root | `~/sandboxes.noindex` | `exchange`. Keep the `.noindex` suffix, or add the root to Spotlight's Search Privacy list by hand |
+| `ogun take` destination | `~/Downloads`, name-deduped | `take_dest` |
 | size caps | `shared/` 1 MB per file, `out/` 1 GB per file | — |
 
 ## Implementation map

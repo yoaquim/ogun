@@ -38,28 +38,28 @@ def signed_in() -> bool:
 
 
 def skills_store() -> Path:
-    return settings.path("SBX_SKILLS_STORE",
-                         Path.home() / "Library/Application Support/com.docker.sandboxes/sandboxes/agent-skills")
+    """sbx's shared skills store, which every sandbox mounts."""
+    return Path.home() / "Library/Application Support/com.docker.sandboxes/sandboxes/agent-skills"
 
 
 def skills_dir() -> str:
-    """SBX_SKILLS_DIR, the folder mirrored into sbx's skills store ("" unset)."""
-    v = settings.get("SBX_SKILLS_DIR")
+    """skills_dir, the folder mirrored into sbx's skills store ("" unset)."""
+    v = settings.get("skills_dir")
     return str(Path(v).expanduser()) if v else ""
 
 
 def skills() -> bool:
-    """The skills folder (SBX_SKILLS_DIR) mirrored into the shared store every
+    """The skills folder (skills_dir) mirrored into the shared store every
     sandbox mounts; unset, none, said once. The store is ALWAYS left read-only:
     sandboxes mount it rw, and read-only file modes are the only thing stopping
     one sandbox from planting a skill for the rest. This mirror is the sole
     writer; it unlocks, syncs, and relocks."""
     src = skills_dir()
     if not src:
-        config.once("skills", "no skills folder (SBX_SKILLS_DIR): none mirrored into sbx's skills store")
+        config.once("skills", "no skills folder (skills_dir): none mirrored into sbx's skills store")
         return True
     if not os.path.isdir(src):
-        log.err(f"og: the skills folder (SBX_SKILLS_DIR) {log.path(src)} isn't a folder")
+        log.err(f"og: the skills folder (skills_dir) {log.path(src)} isn't a folder")
         return False
     store = skills_store()
     if store.is_dir():
@@ -191,10 +191,10 @@ def create(name: str, org: str, d: str, kind: str = "session", item: str = "", a
     # the token step comes last, and an item it can't name would leave the sandbox
     # made and set up but without a token: refuse while nothing is made
     if not item and not github.token_name():
-        log.err("og: no profile and no SBX_TOKEN_NAME, so og can't name this Mac's GitHub token items; nothing was made. "
-                "Choose a profile (OG_PROFILE, or ~/.config/ogun/profile) or set SBX_TOKEN_NAME (docs/appendix/flags-and-env.md)")
+        log.err("og: no profile and no token_name, so og can't name this Mac's GitHub token items; nothing was made. "
+                "Choose a profile (OG_PROFILE, or ~/.config/ogun/profile) or set token_name (docs/appendix/flags-and-env.md)")
         return False
-    baseline.baseline_lists()   # a baseline.env og can't read stops here, not with the sandbox half set up
+    baseline.baseline_lists()   # a [baseline] og can't read stops here, not with the sandbox half set up
     # secret grants: asked about before anything exists, so a "no" leaves no half-made sandbox
     given = approval.approved(d)
     sshkd = sshkeys.keys_dir()

@@ -34,7 +34,7 @@ COMMANDS = {
     'style': ('',
                 "draw every pattern og's output uses: steps, notes, warnings, errors, a callout, a summary, a usage box (docs/appendix/ogun-style.md)"),
     'skills': ('',
-                 "mirror your skills folder (SBX_SKILLS_DIR) into sbx's shared skills store, which every sandbox mounts, and lock it read-only"),
+                 "mirror your skills folder (skills_dir) into sbx's shared skills store, which every sandbox mounts, and lock it read-only"),
     'policy': ('',
                  "(re)apply this Mac's safety settings, for every sandbox: baseline egress allowlist, each sandbox's push rules "
                  "and registry egress, ssh-agent forwarding off, and the removal line for an allow covering all of github.com"),

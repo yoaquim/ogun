@@ -31,7 +31,7 @@ def bare_mac(home, og, fakes):
     (("tidy",), 0, "nothing to tidy"),
     (("log",), 0, "nothing recorded yet"),
     (("project", "ls"), 1, "no registry.json at ~/.config/ogun/registry.json"),
-    (("skills",), 1, "no skills folder is set (SBX_SKILLS_DIR"),
+    (("skills",), 1, "no skills folder is set (skills_dir"),
     (("policy",), None, "baseline egress"),
     (("doctor",), None, ""),
 ])
@@ -86,7 +86,7 @@ def test_a_test_without_a_scratch_home_still_has_one(tmp_path):
     from conftest import RUNNERS_HOME
     from ogun.core import settings
     assert os.environ["HOME"] != RUNNERS_HOME and str(paths.state_dir()).startswith(str(tmp_path))
-    assert not [n for n in (*settings.NAMES, "XDG_CONFIG_HOME") if n in os.environ and n != "SBX_OGUN_DIR"]
+    assert not [n for n in (*map(settings.env_name, settings.NAMES), "XDG_CONFIG_HOME") if n in os.environ]
 
 
 def test_nor_the_runners_terminal_settings():

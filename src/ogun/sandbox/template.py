@@ -14,7 +14,7 @@ from ogun.core import boxes, config, log, sbx
 from ogun.net import baseline, ruletable
 from ogun.sandbox import appa, base
 
-NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,40}")   # kept in step with the shell completion's _sbx_template_name_ok (shared-values.test.sh)
+NAME_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,40}")   # kept in step with the shell completion's _og_template_name_ok (shared-values.test.sh)
 
 TEMPLATE_USAGE = "[<name> | ls [--json] | rm <name>]"
 TEMPLATE_HELP = dict(
@@ -268,7 +268,7 @@ def _owns(sb: str, g: Path, listing: str | None) -> bool:
 
 def _build_locked(name: str, recipe: Path, egress: list[str], scrub: list[str], appa_on: bool, g: Path) -> bool:
     sb, img = f"golden-{name}", image(name)
-    baseline.baseline_lists()   # a baseline.env og can't read stops here, before anything is made
+    baseline.baseline_lists()   # a [baseline] og can't read stops here, before anything is made
     # golden-<name> is only ever this build's own throwaway: nothing in it is
     # worth a prompt, so each sbx call runs with no stdin, and rm takes --force,
     # since sbx refuses its y/N outright without a terminal. A leftover goes

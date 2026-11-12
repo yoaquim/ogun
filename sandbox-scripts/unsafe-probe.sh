@@ -11,7 +11,7 @@
 # asked (a job stopped mid-turn leaves its `working` state behind for good).
 # --root <dir> (any number, before the mode): another place to look, the sandbox's
 # own workspace, which og may have mounted from outside the usual roots.
-# SBX_PROBE_ROOTS (where checkouts are looked for) is for tests.
+# OG_PROBE_ROOTS (where checkouts are looked for) is for tests.
 mode=""; extra=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -25,7 +25,7 @@ done
 # — it must not block removal. /proc/mounts marks them ro.
 ro=""; while read -r _ mp _ opts _; do case ",$opts," in *,ro,*) ro="$ro $mp";; esac; done < /proc/mounts
 is_ro() { for mp in $ro; do case "$1" in "$mp"|"$mp"/*) return 0;; esac; done; return 1; }
-read -ra roots <<< "${SBX_PROBE_ROOTS:-/Users /home/agent}"   # split on spaces, never globbed
+read -ra roots <<< "${OG_PROBE_ROOTS:-/Users /home/agent}"   # split on spaces, never globbed
 roots+=(${extra[@]+"${extra[@]}"})
 # a workspace under a usual root is found twice: once is the report
 find "${roots[@]}" -maxdepth 6 -name .git -type d 2>/dev/null | sort -u | while IFS= read -r g; do

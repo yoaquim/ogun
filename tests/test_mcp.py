@@ -81,7 +81,7 @@ def row(out: str, pattern: str) -> bool:
 
 
 def changes_log(home) -> str:
-    f = home / ".config/sbx/ogun/og.log"
+    f = home / ".local/state/ogun/og.log"
     return f.read_text() if f.exists() else ""
 
 

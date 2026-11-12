@@ -1,7 +1,7 @@
 """sshkeys: what keeps the Mac's signing key out of every sandbox. The probe that
 proves a sandbox reaches no ssh-agent (sbx's setting can read off before the daemon
 applies it), and the one host folder (~/.ssh/sandbox) every sandbox mounts
-read-only: refused while it holds a key SBX_PROTECTED_KEYS keeps out or a symlink. Then
+read-only: refused while it holds a key protected_keys keeps out or a symlink. Then
 og's sandbox-ssh.sh, the setup that runs inside the sandbox, run here against
 a scratch HOME. Real ssh-keygen, throwaway keys."""
 
@@ -88,7 +88,7 @@ def agents():
 def probe(**env) -> str:
     """The probe og sends, run here: no real socket, gateway or agent unless given."""
     base = {k: v for k, v in os.environ.items() if k not in ("SSH_AUTH_SOCK", "SSH_AUTH_SOCK_GATEWAY")}
-    base.update({"SBX_AGENT_SOCK": "", "SBX_AGENT_GATEWAY": "127.0.0.1:1"}, **env)
+    base.update({"OG_AGENT_SOCK": "", "OG_AGENT_GATEWAY": "127.0.0.1:1"}, **env)
     return subprocess.run(["bash", "-c", sshkeys.PROBE], env=base, capture_output=True, text=True).stdout.strip()
 
 
@@ -96,7 +96,7 @@ def test_the_probe_reports_none_when_nothing_answers():
     assert probe() == "agent:none"
 
 
-@pytest.mark.parametrize("where", ["SBX_AGENT_GATEWAY", "SSH_AUTH_SOCK_GATEWAY", "SSH_AUTH_SOCK", "SBX_AGENT_SOCK"],
+@pytest.mark.parametrize("where", ["OG_AGENT_GATEWAY", "SSH_AUTH_SOCK_GATEWAY", "SSH_AUTH_SOCK", "OG_AGENT_SOCK"],
                          ids=["gateway port only", "the gateway's named address", "SSH_AUTH_SOCK", "sbx's fixed socket"])
 def test_the_probe_finds_an_agent_wherever_it_answers(agents, where):
     tcp, sock = agents
@@ -120,16 +120,16 @@ def keys(tmp_path_factory):
 
 @pytest.fixture
 def ssh(tmp_path, keys, monkeypatch):
-    """SBX_SSH_DIR: the Mac's ~/.ssh, a key it signs with and a signers file, which
-    SBX_PROTECTED_KEYS names, git's own allowed_signers, and an empty sandbox folder."""
+    """The Mac's ~/.ssh (sshkeys.ssh_dir), a key it signs with and a signers file, which
+    protected_keys names, git's own allowed_signers, and an empty sandbox folder."""
     s = tmp_path / "ssh"
     (s / "sandbox").mkdir(parents=True)
     for f in ("signer", "signer.pub"):
         (s / f).write_bytes((keys / f).read_bytes())
     (s / "peer_signers").write_text(f'me@mac namespaces="git" {(keys / "peer.pub").read_text()}')
     (s / "allowed_signers").write_text(f'# comment\nme@mac {(keys / "allowed.pub").read_text()}')
-    monkeypatch.setenv("SBX_SSH_DIR", str(s))
-    monkeypatch.setenv("SBX_PROTECTED_KEYS", f"{s}/signer:{s}/peer_signers:{s}/allowed_signers")
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: s)
+    monkeypatch.setenv("OG_PROTECTED_KEYS", f"{s}/signer:{s}/peer_signers:{s}/allowed_signers")
     return s
 
 
@@ -156,7 +156,7 @@ def test_an_unrelated_key_is_accepted_beside_a_locked_key_and_a_non_key_file_nev
 
 def test_a_protected_key_is_refused_naming_the_file_and_what_protects_it(ssh, keys, capfd):
     put(ssh, keys, "signer", as_="id")
-    assert refused(capfd, f"og: {ssh}/sandbox/id is the key in {ssh}/signer, which SBX_PROTECTED_KEYS keeps out")
+    assert refused(capfd, f"og: {ssh}/sandbox/id is the key in {ssh}/signer, which protected_keys keeps out")
 
 
 def test_its_public_key_too(ssh, keys, capfd):
@@ -201,7 +201,7 @@ def test_a_key_file_is_told_from_a_signers_file_by_its_first_whole_word(tmp_path
 
 
 def test_unset_git_s_own_allowed_signers_is_protected_and_nothing_else(ssh, keys, capfd, monkeypatch):
-    monkeypatch.delenv("SBX_PROTECTED_KEYS")
+    monkeypatch.delenv("OG_PROTECTED_KEYS")
     put(ssh, keys, "signer", as_="id")
     assert sshkeys.keys_check()
     put(ssh, keys, "allowed.pub", as_="k.pub")
@@ -209,15 +209,15 @@ def test_unset_git_s_own_allowed_signers_is_protected_and_nothing_else(ssh, keys
 
 
 def test_a_protected_file_that_isnt_there_protects_nothing_and_stops_nothing(ssh, keys, monkeypatch):
-    monkeypatch.setenv("SBX_PROTECTED_KEYS", f"{ssh}/gone:{ssh}/signer")
+    monkeypatch.setenv("OG_PROTECTED_KEYS", f"{ssh}/gone:{ssh}/signer")
     put(ssh, keys, "deploy")
     assert sshkeys.keys_check()
 
 
 def test_a_protected_path_that_isnt_a_full_path_stops_og_naming_it(ssh, monkeypatch):
     from ogun.core import settings
-    monkeypatch.setenv("SBX_PROTECTED_KEYS", "signer")
-    with pytest.raises(settings.Unreadable, match="SBX_PROTECTED_KEYS"):
+    monkeypatch.setenv("OG_PROTECTED_KEYS", "signer")
+    with pytest.raises(settings.Unreadable, match="protected_keys"):
         sshkeys.protected_keys()
 
 

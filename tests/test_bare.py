@@ -34,8 +34,8 @@ def bare_og(home, registry, fakes, og, real_git, monkeypatch):
         subprocess.run(["git", "-C", str(r), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false",
                         "commit", "-q", "--allow-empty", "-m", "i"], check=True)
     (home / ".config/sbx").mkdir(parents=True, exist_ok=True)
-    monkeypatch.setenv("SBX_VAULT", "Sandbox")
-    monkeypatch.setenv("SBX_SSH_DIR", str(home / "ssh"))
+    monkeypatch.setenv("OG_VAULT", "Sandbox")
+    monkeypatch.setattr("ogun.secrets.sshkeys.ssh_dir", lambda: home / "ssh")
     fakes.op.answer([], stdout="tok")
     fakes.curl.answer([], code=1)
 
@@ -115,9 +115,9 @@ def test_a_default_name_whose_sandbox_is_another_folders_is_refused_before_any_t
 
 def test_named_on_purpose_it_attaches_from_anywhere(bare_og):
     run, app, _, home = bare_og
-    (home / ".config/sbx/ogun/tokens").mkdir(parents=True, exist_ok=True)
-    (home / ".config/sbx/ogun/tokens/app.owner").write_text("personal\n")   # as its create left it: that folder names no owner
-    (home / ".config/sbx/ogun/tokens/app.item").write_text("github-pat-personal-desk\n")
+    (home / ".local/state/ogun/tokens").mkdir(parents=True, exist_ok=True)
+    (home / ".local/state/ogun/tokens/app.owner").write_text("personal\n")   # as its create left it: that folder names no owner
+    (home / ".local/state/ogun/tokens/app.item").write_text("github-pat-personal-desk\n")
     code, out, _ = run(app, "app", "--no-attach", listed=f"app  claude  running  {home / 'other/app'}")
     assert code == 0 and "'app' exists — attaching" in out and "'app' is ready" in out
 
@@ -165,7 +165,7 @@ def test_flags_that_dont_parse_are_one_and_say_why(home, capfd, args, says):
 
 def test_an_item_flag_with_no_value_names_the_vault_og_reads(home, capfd, monkeypatch):
     use_profile(home, "home")
-    monkeypatch.setenv("SBX_VAULT", "Shared")
+    monkeypatch.setenv("OG_VAULT", "Shared")
     assert bare.parse(["--item"]) == 1 and "--item needs an item name from vault 'Shared'" in "".join(capfd.readouterr())
 
 

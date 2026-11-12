@@ -13,12 +13,12 @@ from ogun.exchange import screen
 
 
 def exchange() -> Path:
-    return settings.path("SBX_EXCHANGE", Path.home() / "sandboxes.noindex")
+    return settings.path("exchange", Path.home() / "sandboxes.noindex")
 
 
 def box(name: str) -> Path | None:
     """A sandbox's box (in/ + out/), boxes/<name>, or None. Kept in step with the
-    shell completion's _sbx_exchange_box."""
+    shell completion's _og_exchange_box."""
     b = exchange() / "boxes" / name
     return b if b.is_dir() else None
 

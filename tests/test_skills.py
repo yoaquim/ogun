@@ -13,8 +13,8 @@ import pytest
 def store(home, monkeypatch):
     """A skills folder with two skills, and the store beside them."""
     s = home / "store"
-    monkeypatch.setenv("SBX_SKILLS_STORE", str(s))
-    monkeypatch.setenv("SBX_SKILLS_DIR", "~/agent-config/skills")   # a team's
+    monkeypatch.setattr("ogun.sandbox.create.skills_store", lambda: s)
+    monkeypatch.setenv("OG_SKILLS_DIR", "~/agent-config/skills")   # a team's
     for name in ("outline", "glossary"):
         (home / f"agent-config/skills/{name}").mkdir(parents=True)
         (home / f"agent-config/skills/{name}/SKILL.md").write_text(f"{name}\n")
@@ -55,7 +55,7 @@ def test_a_skill_a_sandbox_planted_in_the_store_is_removed(og, store):
 
 def test_a_store_that_cant_be_made_fails_it(og, store, home, monkeypatch):
     (home / "blocker").write_text("a file, not a folder\n")
-    monkeypatch.setenv("SBX_SKILLS_STORE", str(home / "blocker/store"))
+    monkeypatch.setattr("ogun.sandbox.create.skills_store", lambda: home / "blocker/store")
     code, out, err = og("skills")
     assert code == 1 and "couldn't make the skills store" in out + err
 

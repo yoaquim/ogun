@@ -62,7 +62,7 @@ ROLES = (
     (r"#\s*(?:runtime-)?egress:\s*([^\n]+)", "a host", "many"),
     (r"\bog (?:allow|net) \S+ ([^\n|]+)", "a host", "many"),
     (r"\bog pass (?!-)\S+ \S+ ((?:(?:[a-z0-9-]+\.)+[a-z]{2,}[, ]*)+)", "a host", "many"),
-    (r"SBX_VAULT[\"']?\s*[=,]\s*[\"']([^\"'{]+)[\"']", "a vault"),
+    (r"(?:\bOG_VAULT[\"']?\s*[=,]|(?<![\w.-])vault = )\s*[\"']([^\"'{]+)[\"']", "a vault"),
     (r"op://([^/\s\"'{]+)/", "a vault"),
     (r"(github-pat-[a-z0-9-]*[a-z0-9])", "a token item"),
     (r"[\"']item[\"']:\s*[\"']([^\"'{]+)[\"']", "a token item"),
@@ -78,14 +78,14 @@ ROLES = (
     (r"templates/([\w-]+)\.sh", "a recipe"),
     (r"\bog template (?:rm )?(?!ls\b|rm\b|--)([a-z][\w-]*)", "a recipe"),
     (r"[\"']template[\"']:\s*[\"']([\w-]+)[\"']", "a recipe"),
-    (r"SBX_GITHUB_OWNERS[\"']?\s*=\s*[\"']([^\"']+)[\"']", "a GitHub owner", "many"),
-    (r"SBX_PROJECTS[\"']?\s*=\s*[\"']([^\"']+)[\"']", "a project folder", "many"),
+    (r"(?:\bOG_GITHUB_OWNERS[\"']?\s*|(?<![\w.-])github_owners )=\s*[\"']([^\"']+)[\"']", "a GitHub owner", "many"),
+    (r"(?:\bOG_PROJECTS[\"']?\s*|(?<![\w.-])projects )=\s*[\"']([^\"']+)[\"']", "a project folder", "many"),
     (r"\bog(?:un)? (?:[^\s:]+ )*--org ([a-z][\w-]*)(?![\w-])", "an owner"),
     (r"\bog token ([a-z][\w-]*)(?![\w-])(?! +[a-z])", "an owner"),
     (r"\[(?:profile|sso-session) ([\w-]+)\]", "an AWS profile"),
 )
 ROLES_RE = [(re.compile(r[0]), r[1], len(r) > 2) for r in ROLES]
-# a flag, a placeholder (<owner>, $HOME, {name}), a setting's own name (SBX_PROJECTS) or
+# a flag, a placeholder (<owner>, $HOME, {name}), a setting's own name (OG_PROJECTS) or
 # a message (a name with a space in it) is no example
 NOT_A_NAME = re.compile(r"^[-<$`{%]|[<>()]|^[A-Z][A-Z0-9_]+$|\S\s+\S")
 # what a host looks like, once its scheme is off: dotted, maybe a * in front, maybe a path
@@ -171,7 +171,7 @@ import pytest  # noqa: E402
     ('tk.machine("zorbmac")', "a profile", "zorbmac"),
     ("https://zorb.host.io/x", "a host", "zorb.host.io"),
     ("git.zorb.example", "a host", "git.zorb.example"),
-    ('SBX_VAULT = "Zorbvault"', "a vault", "Zorbvault"),
+    ('vault = "Zorbvault"', "a vault", "Zorbvault"),
     ('"profiles": ["zorbmac"]', "a profile", "zorbmac"),
     ("op://Zorbvault/item/credential", "a vault", "Zorbvault"),
     ("github-pat-zorbco-home", "a token item", "github-pat-zorbco-home"),
@@ -199,8 +199,8 @@ import pytest  # noqa: E402
     ("og pass cub KEY api.zorb.io dash.zorb.io --paste", "a host", "dash.zorb.io"),
     ('--item "Zorb API Token"', "a token item", "Zorb"),
     ("og pass cub K --expose --item zorb-key", "a token item", "zorb-key"),
-    ('SBX_GITHUB_OWNERS = "personal=zorbco acme=acme-corp"', "a GitHub owner", "personal=zorbco"),
-    ('SBX_PROJECTS = "~/Projects:~/Zorb=acme"', "a project folder", "~/Zorb=acme"),
+    ('github_owners = "personal=zorbco acme=acme-corp"', "a GitHub owner", "personal=zorbco"),
+    ('projects = "~/Projects:~/Zorb=acme"', "a project folder", "~/Zorb=acme"),
     ("og cub --org zorbco --sync", "an owner", "zorbco"),
     ("og token zorbco", "an owner", "zorbco"),
     ("[profile zorb-prod]", "an AWS profile", "zorb-prod"),
@@ -212,7 +212,7 @@ def test_each_role_is_found_and_a_name_off_the_list_caught(text, role, name):
 
 
 @pytest.mark.parametrize("text", [
-    "og allow <name> <domain>… --read-only", "og token <owner>", "og net cub --rm", 'SBX_PROJECTS = "$HOME/Projects"',
+    "og allow <name> <domain>… --read-only", "og token <owner>", "og net cub --rm", 'projects = "$HOME/Projects"',
     "--item `github-pat-<owner>`", "og pass: --paste and --item are two", "an explicit --org or --item on an",
     "og: --item and --org together",
 ])
@@ -222,7 +222,7 @@ def test_a_placeholder_or_a_flag_is_no_example(text):
 
 def test_the_scripts_og_sends_into_a_sandbox_and_its_setup_are_read_too():
     rel = {str(f.relative_to(paths.OGUN)) for f in og_files()}
-    assert {"setup.sh", "test.sh", "bin/venv", "sandbox-scripts/sandbox-ssh.sh", "src/ogun/net/baseline.env"} <= rel
+    assert {"setup.sh", "test.sh", "bin/venv", "sandbox-scripts/sandbox-ssh.sh", "src/ogun/net/baseline.toml"} <= rel
 
 
 @pytest.mark.parametrize("name", ["acme", "github-pat-acme-home", "gitlab.example.com", "pypi.org", "files.pythonhosted.org",
@@ -241,4 +241,4 @@ def test_personal_is_fine_as_an_owner_but_not_as_a_profile_or_a_recipe():
 
 
 def test_a_message_or_a_settings_name_is_no_example():
-    assert names_in('"item": "has space"') == [] and names_in('SBX_VAULT", "SBX_PROJECTS"') == []
+    assert names_in('"item": "has space"') == [] and names_in('OG_VAULT", "OG_PROJECTS"') == []

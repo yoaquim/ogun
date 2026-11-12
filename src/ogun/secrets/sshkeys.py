@@ -6,7 +6,7 @@ guards:
   holds the host's keys, perhaps a commit-signing one. So setup asks the sandbox.
 - the key folder: <ssh dir>/sandbox is mounted read-only into every sandbox and
   its keys copied in (og's sandbox-ssh.sh). Every sandbox can read and
-  copy what's there, so a protected key (SBX_PROTECTED_KEYS) is refused, and so is a
+  copy what's there, so a protected key (protected_keys) is refused, and so is a
   symlink (it could point at one)."""
 
 import os
@@ -22,15 +22,15 @@ from ogun.core import log, sbx, settings
 # the signal. The agent reaches it two ways: a socket (SSH_AUTH_SOCK, sbx's
 # /run/ssh-agent.sock) and the gateway's TCP port behind it, which answers the
 # agent protocol to any process that connects; so the probe asks that port for
-# identities too, and any reply is an agent. SBX_AGENT_SOCK and SBX_AGENT_GATEWAY
+# identities too, and any reply is an agent. OG_AGENT_SOCK and OG_AGENT_GATEWAY
 # override its defaults, so the tests run it outside a sandbox.
 PROBE = r'''
-    s=${SSH_AUTH_SOCK:-}; k=${SBX_AGENT_SOCK-/run/ssh-agent.sock}
+    s=${SSH_AUTH_SOCK:-}; k=${OG_AGENT_SOCK-/run/ssh-agent.sock}
     if { [ -n "$s" ] && [ -S "$s" ]; } || { [ -n "$k" ] && [ -S "$k" ]; }; then echo agent:present; exit 0; fi
     if command -v ssh-add >/dev/null 2>&1 && { ssh-add -l >/dev/null 2>&1; [ $? -ne 2 ]; }; then echo agent:present; exit 0; fi
     ask() { exec 3<>"/dev/tcp/$1/$2" || return 1; printf "\000\000\000\001\013" >&3; head -c1 <&3 | od -An -tx1; }
     export -f ask
-    for g in ${SSH_AUTH_SOCK_GATEWAY:-} ${SBX_AGENT_GATEWAY-gateway.docker.internal:3129}; do
+    for g in ${SSH_AUTH_SOCK_GATEWAY:-} ${OG_AGENT_GATEWAY-gateway.docker.internal:3129}; do
         h=${g%:*}; p=${g##*:}; { [ -n "$h" ] && [ -n "$p" ] && [ "$h" != "$g" ]; } || continue
         r=$(timeout 3 bash -c "ask \"\$@\"" _ "$h" "$p" 2>/dev/null)
         [ -n "${r// /}" ] && { echo agent:present; exit 0; }
@@ -57,7 +57,7 @@ def agent_absent(sb: str, cmd: str = "") -> bool:
 
 
 def ssh_dir() -> Path:
-    return settings.path("SBX_SSH_DIR", Path.home() / ".ssh")
+    return Path.home() / ".ssh"
 
 
 # a public key's first word is its type, whole: a signers file's first word is who it trusts,
@@ -78,17 +78,17 @@ def is_key_file(p: Path) -> bool:
 
 
 def protected_keys() -> list[Path]:
-    """SBX_PROTECTED_KEYS: the files whose keys never go into a sandbox's keys folder,
+    """protected_keys: the files whose keys never go into a sandbox's keys folder,
     colon-separated, each a key (private or public) or a signers file (git's
     allowed_signers form, every key it trusts). Unset, git's own allowed_signers in the
     ssh folder. A path that isn't full stops og: a key meant to be kept out would not be."""
-    v = settings.get("SBX_PROTECTED_KEYS")
+    v = settings.get("protected_keys")
     if not v:
         return [ssh_dir() / "allowed_signers"]
     out = []
     for p in v.split(":"):
         if not p.startswith(("/", "~/")):
-            raise settings.Unreadable(f"SBX_PROTECTED_KEYS: '{log.shown(p)}' isn't a full path (/… or ~/…)")
+            raise settings.Unreadable(f"protected_keys: '{log.shown(p)}' isn't a full path (/… or ~/…)")
         out.append(Path(p).expanduser())
     return out
 
@@ -161,7 +161,7 @@ def signer_fps(f: Path) -> set[str]:
 
 def keys_check(cmd: str = "") -> bool:
     """The folder is absent or safe to mount: no symlink at any depth, and no key
-    SBX_PROTECTED_KEYS keeps out, its own or one a signers file it names trusts."""
+    protected_keys keeps out, its own or one a signers file it names trusts."""
     who = f"og {cmd}" if cmd else "og"
     d = keys_dir(quiet=True)
     if not d:
@@ -199,7 +199,7 @@ def keys_check(cmd: str = "") -> bool:
     for f in files:
         for fp in sorted(fps(f)):
             if fp in kept:
-                log.err(f"{who}: {f} {kept[fp]}, which SBX_PROTECTED_KEYS keeps out of sandboxes ({fp}): "
+                log.err(f"{who}: {f} {kept[fp]}, which protected_keys keeps out of sandboxes ({fp}): "
                         f"every sandbox can read and copy {d}, so it can't go there. Remove it.")
                 return False
     return True

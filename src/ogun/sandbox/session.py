@@ -27,9 +27,9 @@ def attach_usage(problem: str = "", err: bool = True) -> None:
 
 
 def provision_command() -> str:
-    """SBX_PROVISION, a leading ~/ made your Mac's home: sbx mounts host folders at
+    """provision, a leading ~/ made your Mac's home: sbx mounts host folders at
     their own paths, so that's where they are inside the sandbox too. "" unset."""
-    cmd = settings.get("SBX_PROVISION")
+    cmd = settings.get("provision")
     return f"{Path.home()}/{cmd[2:]}" if cmd.startswith("~/") else cmd
 
 
@@ -39,7 +39,7 @@ def provision(sb: str):
     decide whether a failure is fatal."""
     cmd = provision_command()
     if not cmd:
-        config.once("provision", "no provision command (SBX_PROVISION): nothing of yours run inside")
+        config.once("provision", "no provision command (provision): nothing of yours run inside")
         return None
     return sbx.run("exec", sb, "bash", "-lc", cmd, wait="provisioning")
 
@@ -119,7 +119,7 @@ def upkeep(sb: str, ws: str, existed: bool) -> None:
     scan.scan(quiet=True)
     p = provision(sb)
     if p is not None and p.returncode:
-        log.warn(f"  {log.WARNING} the provision command failed (SBX_PROVISION), so the sandbox may be missing what it sets up; "
+        log.warn(f"  {log.WARNING} the provision command failed (provision), so the sandbox may be missing what it sets up; "
                  "to set it up again, run:", fix=log.cmd(f"og {sb} --sync"))
     if ws:
         https_remotes(sb, ws, say=False)

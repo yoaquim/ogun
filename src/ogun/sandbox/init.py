@@ -32,7 +32,7 @@ def too_broad(d: str, tl: str = "") -> str:
     if d == "/" or d == h or h.startswith(d + "/"):
         return "it holds your whole home"
     if any(d == p or p.startswith(d + "/") for p, _ in roots):
-        return "it holds every project (a project folder: SBX_PROJECTS)"
+        return "it holds every project (a project folder: projects)"
     if ex and (d == ex or d.startswith(ex + "/") or ex.startswith(d + "/")):
         return "it is the file exchange, or holds it"
     if any(owner is None and os.path.dirname(d) == p for p, owner in roots) and d != tl:
@@ -45,9 +45,9 @@ def too_broad(d: str, tl: str = "") -> str:
 
 
 def _ask(q: str) -> bool:
-    """A yes at a terminal ($SBX_MENU_IN for tests); no terminal, or anything but
+    """A yes at a terminal ($OG_MENU_IN for tests); no terminal, or anything but
     yes: False, and nothing was changed."""
-    menu = os.environ.get("SBX_MENU_IN")
+    menu = os.environ.get("OG_MENU_IN")
     if not sys.stdin.isatty() and not menu:
         log.err(f"og: {q.removesuffix('?')} — run og at a terminal to be asked, or do it yourself "
                 "(git init, then a first commit)")

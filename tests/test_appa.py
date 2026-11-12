@@ -22,7 +22,7 @@ BINARY = b"#!/bin/sh\necho 'appa 0.37.0'\n"
 
 
 def test_the_lock_pins_a_release_tag_and_both_linux_archives_sha256(home, monkeypatch):
-    monkeypatch.setenv("SBX_APPA_LOCK", str(FIXTURES / "appa.lock"))
+    monkeypatch.setattr("ogun.sandbox.appa.lock_file", lambda: FIXTURES / "appa.lock")
     assert re.fullmatch(r"v\d+\.\d+\.\d+", appa.lock("version"))
     for arch in ("aarch64-unknown-linux-gnu", "x86_64-unknown-linux-gnu"):
         assert re.fullmatch(r"[0-9a-f]{64}", appa.lock(arch))
@@ -124,7 +124,7 @@ def test_an_older_one_is_replaced(release):
 
 @pytest.fixture
 def locked(home, monkeypatch):
-    monkeypatch.setenv("SBX_APPA_LOCK", str(FIXTURES / "appa.lock"))
+    monkeypatch.setattr("ogun.sandbox.appa.lock_file", lambda: FIXTURES / "appa.lock")
 
 
 def test_the_install_allows_the_release_host_for_that_sandbox_only_and_passes_the_locks_values(fakes, locked):
@@ -143,7 +143,7 @@ def test_an_install_that_fails_inside_the_sandbox_fails_the_call(fakes, locked, 
 
 def test_a_lock_without_a_version_and_both_hashes_stops_it_before_any_sbx_call(fakes, home, monkeypatch, tmp_path):
     (tmp_path / "bad.lock").write_text("version latest\n")
-    monkeypatch.setenv("SBX_APPA_LOCK", str(tmp_path / "bad.lock"))
+    monkeypatch.setattr("ogun.sandbox.appa.lock_file", lambda: tmp_path / "bad.lock")
     assert not appa.install("box")
     assert fakes.sbx.calls == []
 
@@ -180,7 +180,7 @@ def bundle_files(text: str) -> dict:
 def test_an_appa_script_goes_in_as_a_bundle_on_stdin_never_from_a_host_mount(fakes, home):
     appa.script("box", "ensure.sh", wait="checking")
     c = fakes.sbx.calls[-1]
-    assert c[:4] == ["exec", "-i", "box", "bash"] and c[-1] == "ensure.sh" and "OGUN_PROVISION=" in c[5]
+    assert c[:4] == ["exec", "-i", "box", "bash"] and c[-1] == "ensure.sh" and "OG_PROVISION_CMD=" in c[5]
     got = bundle_files(fakes.sbx.stdin[-1])
     assert sorted(got) == ["activate.sh", "ensure.sh", "policy.py"]
     for name, (body, mode) in got.items():
@@ -197,15 +197,15 @@ def test_the_bundle_runs_from_a_fresh_folder_that_goes_after(home, tmp_path):
 
 
 def test_activation_is_told_ogs_provision_command_by_og_never_by_the_sandbox(home, monkeypatch):
-    monkeypatch.setenv("SBX_PROVISION", "~/setup-repo/provision.sh --all")
-    assert appa.runner(appa._provision()).startswith(f"OGUN_PROVISION='{home}/setup-repo/provision.sh --all' ")
-    assert "OGUN_PROVISION='' " in appa.runner("") and "OGUN_PROVISION='a b' " in appa.runner("a b")
+    monkeypatch.setenv("OG_PROVISION", "~/setup-repo/provision.sh --all")
+    assert appa.runner(appa._provision()).startswith(f"OG_PROVISION_CMD='{home}/setup-repo/provision.sh --all' ")
+    assert "OG_PROVISION_CMD='' " in appa.runner("") and "OG_PROVISION_CMD='a b' " in appa.runner("a b")
 
 
 def probe_bundle(tmp_path) -> str:
     """A bundle holding one script that prints what it was told to provision with."""
     import base64
-    (tmp_path / "probe.sh").write_text('printf "%s\\n" "${OGUN_PROVISION-unset}" "$@"\n')
+    (tmp_path / "probe.sh").write_text('printf "%s\\n" "${OG_PROVISION_CMD-unset}" "$@"\n')
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as t:
         t.add(tmp_path / "probe.sh", arcname="probe.sh")
@@ -213,7 +213,7 @@ def probe_bundle(tmp_path) -> str:
 
 
 @pytest.mark.parametrize("cmd", ["/srv/me/agent-config/provision.sh --all", ""])
-@pytest.mark.parametrize("planted", [{"OGUN_PROVISION": "/planted/by/the/sandbox"}, {}], ids=["sandbox sets one", "sandbox sets none"])
+@pytest.mark.parametrize("planted", [{"OG_PROVISION_CMD": "/planted/by/the/sandbox"}, {}], ids=["sandbox sets one", "sandbox sets none"])
 def test_the_script_gets_ogs_provision_command_over_the_sandboxs_own_and_its_arguments(tmp_path, cmd, planted):
     p = subprocess.run(["bash", "-c", appa.runner(cmd), "probe.sh", "a b", "c"], input=probe_bundle(tmp_path), capture_output=True,
                        text=True, env={"PATH": "/usr/bin:/bin", "TMPDIR": str(tmp_path), **planted})
