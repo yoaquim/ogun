@@ -1,0 +1,8 @@
+# what tests/docker/Dockerfile's build leaves out of the repo: what a run builds on the host
+# (venvs, caches), git's own folder, and the issues
+.git
+.issues
+.venv*
+**/__pycache__
+.pytest_cache
+.ruff_cache
