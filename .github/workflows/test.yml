@@ -1,0 +1,28 @@
+# og's tests on every push to main and every pull request: the test container
+# (tests/docker/run.sh), the same run as on a Mac. Read-only token, no secrets, every
+# action pinned to a commit (tests/sh/ci.test.sh checks all three).
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# a pull request's newer push replaces its older run; every push to main is tested to the end
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+      - name: og's suite in the test container
+        run: tests/docker/run.sh

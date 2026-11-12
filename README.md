@@ -4,6 +4,8 @@
 
 **Claude Code in a sandbox per repo. Never on your Mac.**
 
+[![test](https://github.com/yoaquim/ogun/actions/workflows/test.yml/badge.svg)](https://github.com/yoaquim/ogun/actions/workflows/test.yml)
+
 [Quick start](#quick-start) · [Install](#install) · [Docs](docs/README.md) · [MIT license](LICENSE)
 
 </div>
