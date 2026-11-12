@@ -10,7 +10,9 @@ trap 'rm -f "$log"' EXIT
 "$root/test.sh" "$@" 2>&1 | tee "$log"
 rc=${PIPESTATUS[0]}
 (( rc == 0 )) || exit "$rc"
-# a file skipped whole is in test.sh's summary; a case skipped, a line of its own
+# a file skipped whole is in test.sh's summary; a case skipped, a line of its own.
+# pytest's own skips never reach this log (the runner drops pytest's output):
+# OG_NO_SKIPS=1, set in the Dockerfile, makes tests/conftest.py fail them instead
 if grep -qE '^  skip  |test file\(s\) skipped|; [0-9]+ skipped$' "$log"; then
   echo "og's test container: a test was skipped, and here none may be (above)" >&2
   exit 1

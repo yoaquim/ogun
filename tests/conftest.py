@@ -17,6 +17,17 @@ import pytest
 FIXTURES = Path(__file__).parent / "fixtures"
 
 FAKED = ("sbx", "op", "curl", "git", "ssh")
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """In og's test container (OG_NO_SKIPS=1) a skip is a failure: the image has every
+    tool a test needs, so a test that can't run there means the image is wrong."""
+    outcome = yield
+    rep = outcome.get_result()
+    if os.environ.get("OG_NO_SKIPS") == "1" and rep.skipped and not hasattr(rep, "wasxfail"):
+        rep.outcome = "failed"
+        rep.longrepr = f"skipped, and OG_NO_SKIPS=1 allows no skip here: {rep.longrepr}"
 REAL_GIT = shutil.which("git")
 RUNNERS_HOME = os.environ.get("HOME", "")
 

@@ -25,4 +25,6 @@ RUN --mount=type=secret,id=extra_ca,uid=1000 \
     fi; \
     ./setup.sh; rc=$?; rm -f /tmp/og-ca.pem; exit $rc
 
+# a skipped pytest test fails (tests/conftest.py): here every tool a test needs is installed
+ENV OG_NO_SKIPS=1
 ENTRYPOINT ["tests/docker/entry.sh"]

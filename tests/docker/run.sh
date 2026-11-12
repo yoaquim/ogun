@@ -15,5 +15,6 @@ if [[ -n "${OG_TEST_CA:-}" ]]; then
   [[ -s "$OG_TEST_CA" ]] || { echo "run.sh: OG_TEST_CA ($OG_TEST_CA) isn't a readable certificate file" >&2; exit 1; }
   ca=(--secret "id=extra_ca,src=$OG_TEST_CA")
 fi
-docker build "${ca[@]}" -f "$root/tests/docker/Dockerfile" -t "$image" "$root"
+# ${ca[@]+…}: an empty array under set -u is an error in macOS's bash 3.2
+docker build ${ca[@]+"${ca[@]}"} -f "$root/tests/docker/Dockerfile" -t "$image" "$root"
 exec docker run --rm "$image" "$@"

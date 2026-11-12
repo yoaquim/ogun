@@ -43,4 +43,16 @@ fails() { local t; t=$(mktemp -d)
   OG_TEST_ROOT="$t" bash "$D/entry.sh" >/dev/null 2>&1; local rc=$?; rm -rf "$t"; [[ $rc -ne 0 ]]; }
 expect_cmd 0 "…and fails a run whose suite failed" fails
 
+# pytest's own skips never reach entry.sh's log (the runner drops pytest's output), so in
+# the container OG_NO_SKIPS=1 makes og's conftest fail a skipped test instead
+expect_cmd 0 "the image sets OG_NO_SKIPS" grep -qxE 'ENV OG_NO_SKIPS=1' "$D/Dockerfile"
+if [[ -n "$OG_PY" ]]; then
+  skipping() { local t; t=$(mktemp -d)
+    printf 'import pytest\n\ndef test_skips():\n    pytest.skip("no tool")\n' > "$t/test_skip.py"
+    (cd "$t" && PYTHONPATH="$OGUN/tests:$OGUN/src" "$OG_PY" -m pytest -q -n0 -p no:cacheprovider -p conftest \
+       -o addopts="" --rootdir "$t" "$t/test_skip.py" >/dev/null 2>&1); local rc=$?; rm -rf "$t"; return "$rc"; }
+  expect_cmd 0 "without OG_NO_SKIPS a skipped pytest test is a skip" env -u OG_NO_SKIPS bash -c "$(declare -f skipping); skipping"
+  expect_cmd 1 "…with OG_NO_SKIPS=1 it fails the run" env OG_NO_SKIPS=1 bash -c "$(declare -f skipping); skipping"
+fi
+
 summarize
