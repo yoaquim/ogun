@@ -5,11 +5,18 @@
 #
 #   OG_E2E=1 OG_E2E_OWNER=acme tests/e2e/run.sh
 #
+# It checks a sandbox's whole life, in order, stopping at the first that fails: create, its
+# token, the network (a baseline host answers; example.com, outside it, is refused, which
+# may leave a request for approval on your Mac until the sandbox goes), the file exchange
+# (og give, og take, a program in out/ quarantined) and og rm, with nothing of it left.
+#
 # Everything it makes is named og-e2e-<run id>: the sandbox, its repo, its exchange box.
 # Teardown runs on every exit (a pass, a failure, an interrupt) and removes only names with
-# that prefix, an earlier run's leftovers included; nothing else of yours is touched.
-# og's own records for the run go to a scratch state folder. It never mints or rotates a
-# token. Exit: 0 every check passed, 1 a check failed, 2 it refused to start.
+# that prefix, an earlier run's leftovers included: sandboxes, their stored secrets, and
+# their folders in the exchange (box, quarantine, shared). Nothing else of yours is touched.
+# og's own records for the run, and what og take brings back, go to a scratch folder. It
+# never mints or rotates a token. Exit: 0 every check passed, 1 a check failed, 2 it
+# refused to start.
 set -uo pipefail
 
 OGUN="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -26,13 +33,13 @@ FAILED=()
 say() { printf '%s\n' "$*"; }
 refuse() { say "og e2e: $*" >&2; exit 2; }
 
-# check <what it proves> <command…>: one line, ok or FAIL
+# check <what it proves> <command…>: one line, ok or FAIL, and its status
 check() {
   local what="$1"; shift
   if "$@" >/dev/null 2>&1; then
     say "  ok    $what"; PASSED=$((PASSED + 1))
   else
-    say "  FAIL  $what"; FAILED+=("$what")
+    say "  FAIL  $what"; FAILED+=("$what"); return 1
   fi
 }
 
@@ -90,18 +97,20 @@ setup_world() {
   SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/og-e2e.XXXXXX")"
   SCRATCH="$(cd -P "$SCRATCH" && pwd)"   # og compares physical paths: /tmp is a link on a Mac
   export XDG_STATE_HOME="$SCRATCH/state"
+  export OG_TAKE_DEST="$SCRATCH/taken"   # og take delivers here, never to your Downloads
   # one project folder, every repo in it the owner's
   export OG_PROJECTS="$SCRATCH/projects=$OWNER"
   REPO="$SCRATCH/projects/$NAME"
-  mkdir -p "$REPO" "$XDG_STATE_HOME"
+  mkdir -p "$REPO" "$XDG_STATE_HOME" "$OG_TAKE_DEST"
   git -C "$REPO" init -q
   printf '# %s\n\nA throwaway repo for og end to end.\n' "$NAME" > "$REPO/README.md"
   git -C "$REPO" add README.md
   git -C "$REPO" -c user.name=og-e2e -c user.email=og-e2e@example.com -c commit.gpgsign=false commit -qm "og e2e"
 }
 
-# every og-e2e sandbox, this run's and any earlier run's, then their boxes. A sandbox that
-# won't go keeps its box (it's mounted there) and fails this, naming it: never a quiet pass
+# every og-e2e sandbox, this run's and any earlier run's, then their stored secrets and
+# folders in the exchange. A sandbox that won't go keeps its box (it's mounted there) and
+# fails this, naming it: never a quiet pass
 remove_leftovers() {
   local n ex names stuck=()
   if ! names=$(leftovers); then
@@ -122,11 +131,22 @@ remove_leftovers() {
     printf '  sbx rm %s --force\n' "${stuck[@]}" >&2
     return 1
   fi
+  remove_secrets
   ex="$(exchange)"
-  if [[ -n "$ex" && -d "$ex/boxes" ]]; then
-    find "$ex/boxes" -mindepth 1 -maxdepth 1 -type d -name "${PREFIX}*" -exec rm -rf {} + 2>/dev/null
+  if [[ -n "$ex" ]]; then
+    for d in boxes .quarantine shared; do
+      [[ -d "$ex/$d" ]] && find "$ex/$d" -mindepth 1 -maxdepth 1 -name "${PREFIX}*" -exec rm -rf {} + 2>/dev/null
+    done
   fi
   return 0
+}
+
+# the secrets sbx still stores for og-e2e sandboxes, which are gone by now
+remove_secrets() {
+  local sb kind
+  while read -r sb kind; do
+    sbx secret rm "$kind" --sandbox "$sb" -f </dev/null >/dev/null 2>&1
+  done < <(sbx secret ls 2>/dev/null | awk -v p="$PREFIX" 'index($1, p) == 1 && $2 == "service" { print $1, $3 }')
 }
 
 # the scratch world, once nothing mounts it any more
@@ -135,9 +155,77 @@ remove_scratch() { [[ -n "${SCRATCH:-}" && -d "$SCRATCH" ]] && rm -rf "$SCRATCH"
 # the EXIT trap: a teardown that fails fails the run, whatever the checks said
 teardown() { remove_leftovers && remove_scratch; }
 
-# ── the run ──
+# ── the checks, one helper each ──
 
-create() { (cd "$REPO" && "$OG" --no-attach </dev/null); }
+inside() { "$OG" sh "$NAME" "$@" </dev/null; }
+box() { local ex; ex="$(exchange)"; [[ -n "$ex" ]] && printf '%s/boxes/%s' "$ex" "$NAME"; }
+listed() { sbx ls 2>/dev/null | awk -v n="$NAME" 'NR > 1 && $1 == n { print $3; f = 1 } END { exit !f }'; }
+
+create() { (cd "$REPO" && "$OG" --no-attach </dev/null) && [[ "$(listed)" == running ]]; }
+
+# sbx stores a github secret scoped to it, and og recorded the owner that filled it
+has_token() {
+  sbx secret ls --sandbox "$NAME" 2>/dev/null \
+    | awk -v n="$NAME" '$1 == n && $2 == "service" && $3 == "github" { f = 1 } END { exit !f }' || return 1
+  [[ "$(cat "$XDG_STATE_HOME/ogun/tokens/$NAME.owner" 2>/dev/null)" == "$OWNER" ]]
+}
+
+# "<http code> <CONNECT code>" as curl reads it from inside; refused is the proxy's 403
+answer() { inside curl -sS -o /dev/null --max-time 20 -w '%{http_code} %{http_connect}' "https://$1/" 2>/dev/null; }
+answered() { [[ "${1%% *}" =~ ^[23][0-9][0-9]$ ]]; }
+refused_403() { [[ " $1 " == *" 403 "* ]]; }
+reaches() { answered "$(answer "$1")"; }
+refused() { refused_403 "$(answer "$1")"; }
+
+given() {
+  local f="$SCRATCH/given-$RUN.txt"
+  printf 'given %s\n' "$RUN" > "$f"
+  (cd "$SCRATCH" && "$OG" give "$NAME" "$f" </dev/null) || return 1
+  [[ "$(inside cat "$(box)/in/given-$RUN.txt")" == "given $RUN" ]]
+}
+
+taken() {
+  # shellcheck disable=SC2016  # expands in the sandbox's sh
+  inside sh -c 'printf "%s\n" "$2" > "$1/report.txt"' _ "$(box)/out" "taken $RUN" || return 1
+  "$OG" take "$NAME" report.txt </dev/null || return 1
+  [[ "$(cat "$OG_TAKE_DEST/report.txt" 2>/dev/null)" == "taken $RUN" && ! -e "$(box)/out/report.txt" ]]
+}
+
+quarantined() {
+  # shellcheck disable=SC2016  # expands in the sandbox's sh
+  inside sh -c 'printf "#!/bin/sh\necho hi\n" > "$1/tool.sh" && chmod +x "$1/tool.sh"' _ "$(box)/out" || return 1
+  "$OG" take "$NAME" tool.sh </dev/null
+  local q; q="$(exchange)/.quarantine/$NAME"
+  [[ ! -e "$OG_TAKE_DEST/tool.sh" && ! -e "$(box)/out/tool.sh" && -d "$q" ]] && [[ -n "$(ls -A "$q")" ]]
+}
+
+removed() { "$OG" rm "$NAME" --force </dev/null && sbx ls >/dev/null 2>&1 && ! listed; }
+
+# nothing of it left: no box, no stored secret (sbx must list them), and og tidy says nothing of it
+nothing_left() {
+  local b s t
+  b=$(box) || return 1   # an exchange og can't name isn't one with nothing left
+  [[ ! -e "$b" ]] || return 1
+  s=$(sbx secret ls 2>/dev/null) || return 1
+  ! awk -v n="$NAME" '$1 == n { f = 1 } END { exit !f }' <<<"$s" || return 1
+  t=$("$OG" tidy </dev/null 2>&1) || return 1
+  ! grep -qF "$NAME" <<<"$t"
+}
+
+# in order; the first that fails stops the rest (each depends on the one before)
+checks() {
+  check "og --no-attach creates the sandbox, and sbx lists it running" create || return
+  check "it holds its own GitHub token, for $OWNER" has_token || return
+  check "a baseline host answers from inside (api.github.com)" reaches api.github.com || return
+  check "a host outside the baseline is refused (example.com)" refused example.com || return
+  check "a file given with og give reads inside" given || return
+  check "a file left in out/ comes back with og take" taken || return
+  check "a program left in out/ is quarantined, never delivered" quarantined || return
+  check "og rm removes it" removed || return
+  check "nothing of it is left: no box, no stored secret, nothing for og tidy" nothing_left
+}
+
+# ── the run ──
 
 main() {
   preflight
@@ -147,7 +235,7 @@ main() {
   setup_world        # og's state is the scratch folder from here on, cleanup included
   remove_leftovers || exit 1   # an earlier run that crashed left these behind
   say "og e2e: $NAME"
-  check "og --no-attach creates the sandbox" create
+  checks
   summary
 }
 

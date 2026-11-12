@@ -45,26 +45,49 @@ expect_cmd 0 "what it cleans up is only og-e2e- sandboxes: never cub, nor a name
 
 # teardown, sourced, on a stand-in sbx whose rm works (it drops the name) or doesn't
 teardown_case() { local works="$1" w; w=$(mktemp -d)
-  mkdir -p "$w/ex/boxes/og-e2e-x" "$w/ex/boxes/cub" "$w/scratch"
+  local d; for d in boxes .quarantine shared; do mkdir -p "$w/ex/$d/og-e2e-x" "$w/ex/$d/cub"; done
+  mkdir -p "$w/scratch"
   printf 'og-e2e-x\n' > "$w/listed"
   cat > "$FAKE/sbx" <<SH
 #!/bin/sh
 [ "$works" = down ] && exit 1
-case "\$1" in
-  ls) echo "NAME AGENT STATUS"; while read -r n; do echo "\$n claude stopped"; done < "$w/listed" ;;
-  rm) [ "$works" = yes ] && : > "$w/listed"; [ "$works" = yes ] ;;
+case "\$1 \$2" in
+  "secret ls") printf '%s\\n' "SCOPE TYPE NAME" "(global) service github" "cub service github" "og-e2e-x service github" ;;
+  "secret rm") echo "\$*" >> "$w/secret-rm" ;;
+  ls*) echo "NAME AGENT STATUS"; while read -r n; do echo "\$n claude stopped"; done < "$w/listed" ;;
+  rm*) [ "$works" = yes ] && : > "$w/listed"; [ "$works" = yes ] ;;
 esac
 SH
   chmod +x "$FAKE/sbx"
   env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:/bin" OG_E2E_SOURCE=1 W="$w" \
     bash -c '. "$1"; OG=/bin/false; SCRATCH="$W/scratch"; exchange() { echo "$W/ex"; }; teardown' _ "$E2E" >/dev/null 2>&1
   local rc=$?
-  if [ "$works" = yes ]; then [ $rc -eq 0 ] && [ ! -e "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/ex/boxes/cub" ] && [ ! -e "$w/scratch" ]
-  else [ $rc -ne 0 ] && [ -d "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/scratch" ]; fi; }
-expect_cmd 0 "teardown removes its sandbox, then only og-e2e- boxes and its scratch folder" teardown_case yes
+  if [ "$works" = yes ]; then [ $rc -eq 0 ] && [ ! -e "$w/scratch" ] || return 1
+    for d in boxes .quarantine shared; do [ ! -e "$w/ex/$d/og-e2e-x" ] && [ -d "$w/ex/$d/cub" ] || return 1; done
+    [ "$(cat "$w/secret-rm" 2>/dev/null)" = "secret rm github --sandbox og-e2e-x -f" ]
+  else [ $rc -ne 0 ] && [ -d "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/scratch" ] && [ ! -e "$w/secret-rm" ]; fi; }
+expect_cmd 0 "teardown removes its sandbox, then only og-e2e- secrets, folders (box, quarantine, shared) and its scratch" teardown_case yes
 expect_cmd 0 "…and a sandbox that won't go fails it, keeping its box and the scratch folder it mounts" teardown_case no
 expect_cmd 0 "…and so does an sbx that can't list (down): nothing is read as gone" teardown_case down
 fake sbx 0 $'NAME AGENT STATUS\ncub claude running\nog-e2e-20260101000000-1 claude stopped\nmy-og-e2e-thing claude running\n'
+
+# the checks run in order and the first that fails stops the rest, said and counted
+stops_at_first() { local o; o=$(env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:/bin" OG_E2E_SOURCE=1 T="$TEST_TMP" OWNER=acme \
+    bash -c '. "$1"; rm -f "$T/ran"; create() { :; }; has_token() { false; }; reaches() { touch "$T/ran"; }
+             checks; c=$?; summary; echo "rc=$c,$?"' _ "$E2E")
+  grep -q '^  ok    og --no-attach' <<<"$o" && grep -q '^  FAIL  it holds its own GitHub token' <<<"$o" \
+    && grep -q '1 of 2 check(s) FAILED' <<<"$o" && grep -q 'rc=1,1' <<<"$o" && [ ! -e "$TEST_TMP/ran" ]; }
+expect_cmd 0 "the first check that fails stops the rest, and the run fails" stops_at_first
+
+# what curl reads back: refused is the proxy's 403 (on the request or its CONNECT), never a host that didn't answer
+reads() { env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 bash -c '. "$1"; '"$1" _ "$E2E"; }
+expect_cmd 0 "a 403, on the request or on its CONNECT, reads as refused" reads 'refused_403 "403 000" && refused_403 "000 403"'
+expect_cmd 1 "…and a host that didn't answer at all doesn't" reads 'refused_403 "000 000"'
+expect_cmd 0 "a 2xx or 3xx reads as answered" reads 'answered "200 000" && answered "301 200"'
+expect_cmd 1 "…and a 403 doesn't" reads 'answered "403 000"'
+
+# og take delivers to the scratch folder, never your Downloads
+expect_cmd 0 "og take delivers to the scratch folder" bash -c 'grep -q "^  export OG_TAKE_DEST=\"\$SCRATCH/" "$E2E"'
 
 # og's state is the scratch folder before any og command runs, leftover cleanup included
 expect_cmd 0 "the scratch state is set up before leftovers are removed" \
