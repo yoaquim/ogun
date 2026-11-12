@@ -46,14 +46,22 @@ FAILED=()
 say() { printf '%s\n' "$*"; }
 refuse() { say "og e2e: $*" >&2; exit 2; }
 
-# check <what it proves> <command…>: one line, ok or FAIL, and its status
+# check <what it proves> <command…>: one line, ok or FAIL, and its status. What the command
+# printed goes to the run's log, kept after teardown; a FAIL shows its last lines
+LOG=""
 check() {
-  local what="$1"; shift
-  if "$@" >/dev/null 2>&1; then
+  local what="$1" out rc=0; shift
+  out="$(mktemp "${TMPDIR:-/tmp}/og-e2e-check.XXXXXX")"
+  "$@" >"$out" 2>&1 || rc=1
+  if (( rc == 0 )); then
     say "  ok    $what"; PASSED=$((PASSED + 1))
   else
-    say "  FAIL  $what"; FAILED+=("$what"); return 1
+    say "  FAIL  $what"; FAILED+=("$what")
+    tail -n 15 "$out" | sed 's/^/        | /'
   fi
+  [[ -n "$LOG" ]] && { printf '== %s\n' "$what"; cat "$out"; } >> "$LOG"
+  rm -f "$out"
+  return "$rc"
 }
 
 summary() {
@@ -61,6 +69,7 @@ summary() {
   if (( ${#FAILED[@]} )); then
     say "og e2e: ${#FAILED[@]} of $(( PASSED + ${#FAILED[@]} )) check(s) FAILED:"
     printf '  - %s\n' "${FAILED[@]}"
+    [[ -n "$LOG" ]] && say "what each check printed: $LOG"
     return 1
   fi
   say "og e2e: all $PASSED check(s) passed"
@@ -111,6 +120,7 @@ exchange() { og_ internal paths 2>/dev/null | awk -F'\t' '$1 == "EXCHANGE" { pri
 setup_world() {
   RUN="$(date +%Y%m%d%H%M%S)-$$"
   NAME="$PREFIX$RUN"
+  LOG="${TMPDIR:-/tmp}/$NAME.log"
   SCRATCH="$(mktemp -d "${TMPDIR:-/tmp}/og-e2e.XXXXXX")"
   SCRATCH="$(cd -P "$SCRATCH" && pwd)"   # og compares physical paths: /tmp is a link on a Mac
   CFG="$SCRATCH/config"
@@ -177,7 +187,17 @@ teardown() { remove_leftovers && remove_scratch; }
 
 inside() { og_ sh "$NAME" "$@" </dev/null; }
 box() { local ex; ex="$(exchange)"; [[ -n "$ex" ]] && printf '%s/boxes/%s' "$ex" "$NAME"; }
-listed() { sbx ls 2>/dev/null | awk -v n="$NAME" 'NR > 1 && $1 == n { print $3; f = 1 } END { exit !f }'; }
+# its status as og reads it (sbx may mark it, "● running"): exit 1 not listed, 2 og couldn't list
+listed() {
+  og_ ls --json 2>/dev/null | "$PY" -I -c 'import json, sys
+try:
+    rows = json.load(sys.stdin)
+except ValueError:
+    sys.exit(2)
+st = [r.get("status", "") for r in rows if isinstance(r, dict) and r.get("sandbox") == sys.argv[1]]
+print(*st[:1])
+sys.exit(0 if st else 1)' "$NAME"
+}
 
 create() { (cd "$REPO" && og_ --no-attach </dev/null) && [[ "$(listed)" == running ]]; }
 
@@ -217,7 +237,7 @@ quarantined() {
   [[ ! -e "$OG_TAKE_DEST/tool.sh" && ! -e "$(box)/out/tool.sh" && -d "$q" ]] && [[ -n "$(ls -A "$q")" ]]
 }
 
-removed() { og_ rm "$NAME" --force </dev/null && sbx ls >/dev/null 2>&1 && ! listed; }
+removed() { og_ rm "$NAME" --force </dev/null || return 1; listed; [[ $? -eq 1 ]]; }
 
 # nothing of it left: no box, no stored secret (sbx must list them), and og tidy says nothing of it
 nothing_left() {

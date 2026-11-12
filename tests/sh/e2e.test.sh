@@ -89,6 +89,21 @@ stops_at_first() { local o; o=$(env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bi
     && grep -q '1 of 2 check(s) FAILED' <<<"$o" && grep -q 'rc=1,1' <<<"$o" && [ ! -e "$TEST_TMP/ran" ]; }
 expect_cmd 0 "the first check that fails stops the rest, and the run fails" stops_at_first
 
+# a failing check shows what its command printed, and each check's status is its own
+shows_why() { local o; o=$(env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 bash -c '. "$1"
+    loud() { echo "sbx: no such template"; false; }
+    check one loud; a=$?; check two true; echo "rc=$a,$?"' _ "$E2E")
+  grep -q '^        | sbx: no such template' <<<"$o" && grep -q '^  ok    two' <<<"$o" && grep -q 'rc=1,0' <<<"$o"; }
+expect_cmd 0 "a failing check shows what its command printed, and passing ones pass after it" shows_why
+
+# its status as og reads it: sbx's own mark taken off, and no listing never read as gone
+status_of() { env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 J="$1" bash -c '. "$1"; NAME=og-e2e-x
+    og_() { printf "%s" "$J"; }; listed; echo "rc=$?"' _ "$E2E"; }
+expect_cmd 0 "a sandbox og lists reads with its status" \
+  bash -c "$(declare -f status_of); [ \"\$(status_of '[{\"sandbox\":\"og-e2e-x\",\"status\":\"running\"}]')\" = \$'running\\nrc=0' ]"
+expect_cmd 0 "…one it doesn't list reads as not listed (1)" bash -c "$(declare -f status_of); [ \"\$(status_of '[]')\" = \$'\\nrc=1' ]"
+expect_cmd 0 "…and a listing og couldn't give is neither (2)" bash -c "$(declare -f status_of); [ \"\$(status_of '')\" = rc=2 ]"
+
 # what curl reads back: refused is the proxy's 403 (on the request or its CONNECT), never a host that didn't answer
 reads() { env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 bash -c '. "$1"; '"$1" _ "$E2E"; }
 expect_cmd 0 "a 403, on the request or on its CONNECT, reads as refused" reads 'refused_403 "403 000" && refused_403 "000 403"'
