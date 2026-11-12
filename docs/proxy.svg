@@ -21,7 +21,7 @@
   </style>
 
   <!-- 1Password feeds the proxy -->
-  <rect class="vault" x="380" y="4" width="320" height="56" rx="9" stroke-width="1.5"/>
+  <rect class="vault" x="360" y="4" width="360" height="56" rx="9" stroke-width="1.5"/>
   <text class="vault-t" x="540" y="27" text-anchor="middle" font-size="18" font-weight="600">1Password</text>
   <text class="sub" x="540" y="48" text-anchor="middle" font-size="14">the real token, handed over by og pass</text>
   <line class="wire head" x1="540" y1="60" x2="540" y2="94"/>
