@@ -55,10 +55,10 @@ preflight() {
   sbx ls >/dev/null 2>&1 || refuse "sbx can't list sandboxes; signed in? run: sbx login"
   command -v op >/dev/null || refuse "no op on PATH: install the 1Password CLI"
   op whoami >/dev/null 2>&1 || refuse "1Password isn't signed in; run: op signin"
-  [[ -x "$OG" ]] || refuse "og isn't built in this checkout; run: $OGUN/setup.sh"
   OWNER="${OG_E2E_OWNER:-}"
   [[ "$OWNER" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
     || refuse "OG_E2E_OWNER names the owner whose GitHub token item the test sandbox gets (lowercase, as its folder)"
+  [[ -x "$OG" ]] || refuse "og isn't built in this checkout; run: $OGUN/setup.sh"
   token_item_exists || refuse "no GitHub token item for $OWNER in your vault; make one with: og token $OWNER (this test never does)"
 }
 
@@ -98,20 +98,32 @@ setup_world() {
   git -C "$REPO" -c user.name=og-e2e -c user.email=og-e2e@example.com -c commit.gpgsign=false commit -qm "og e2e"
 }
 
-# every og-e2e sandbox and its box, this run's and any earlier run's; then the scratch world
-teardown() {
-  local n ex
+# every og-e2e sandbox, this run's and any earlier run's, then their boxes. A sandbox that
+# won't go keeps its box (it's mounted there) and fails this, naming it: never a quiet pass
+remove_leftovers() {
+  local n ex stuck=()
   while read -r n; do
     [[ -n "$n" ]] || continue
     "$OG" rm "$n" --force >/dev/null 2>&1 || sbx rm "$n" --force >/dev/null 2>&1
   done < <(leftovers)
+  while read -r n; do [[ -n "$n" ]] && stuck+=("$n"); done < <(leftovers)   # what sbx still lists
+  if (( ${#stuck[@]} )); then
+    say "og e2e: couldn't remove ${stuck[*]}; its box and the scratch folder are kept. By hand:" >&2
+    printf '  sbx rm %s --force\n' "${stuck[@]}" >&2
+    return 1
+  fi
   ex="$(exchange)"
   if [[ -n "$ex" && -d "$ex/boxes" ]]; then
     find "$ex/boxes" -mindepth 1 -maxdepth 1 -type d -name "${PREFIX}*" -exec rm -rf {} + 2>/dev/null
   fi
-  [[ -n "${SCRATCH:-}" && -d "$SCRATCH" ]] && rm -rf "$SCRATCH"
   return 0
 }
+
+# the scratch world, once nothing mounts it any more
+remove_scratch() { [[ -n "${SCRATCH:-}" && -d "$SCRATCH" ]] && rm -rf "$SCRATCH"; return 0; }
+
+# the EXIT trap: a teardown that fails fails the run, whatever the checks said
+teardown() { remove_leftovers && remove_scratch; }
 
 # ── the run ──
 
@@ -120,10 +132,10 @@ create() { (cd "$REPO" && "$OG" --no-attach </dev/null); }
 main() {
   preflight
   say "og e2e: owner $OWNER"
-  trap 'teardown' EXIT
+  trap 'teardown || exit 1' EXIT
   trap 'exit 130' INT TERM
-  teardown   # an earlier run that crashed left these behind
-  setup_world
+  setup_world        # og's state is the scratch folder from here on, cleanup included
+  remove_leftovers || exit 1   # an earlier run that crashed left these behind
   say "og e2e: $NAME"
   check "og --no-attach creates the sandbox" create
   summary

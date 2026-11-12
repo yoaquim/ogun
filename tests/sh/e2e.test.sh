@@ -43,6 +43,32 @@ only_its_own() { local o; o=$(env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:
     bash -c '. "$1"; leftovers' _ "$E2E"); [[ "$o" == "og-e2e-20260101000000-1" ]]; }
 expect_cmd 0 "what it cleans up is only og-e2e- sandboxes: never cub, nor a name with og-e2e inside it" only_its_own
 
+# teardown, sourced, on a stand-in sbx whose rm works (it drops the name) or doesn't
+teardown_case() { local works="$1" w; w=$(mktemp -d)
+  mkdir -p "$w/ex/boxes/og-e2e-x" "$w/ex/boxes/cub" "$w/scratch"
+  printf 'og-e2e-x\n' > "$w/listed"
+  cat > "$FAKE/sbx" <<SH
+#!/bin/sh
+case "\$1" in
+  ls) echo "NAME AGENT STATUS"; while read -r n; do echo "\$n claude stopped"; done < "$w/listed" ;;
+  rm) [ "$works" = yes ] && : > "$w/listed"; [ "$works" = yes ] ;;
+esac
+SH
+  chmod +x "$FAKE/sbx"
+  env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:/bin" OG_E2E_SOURCE=1 W="$w" \
+    bash -c '. "$1"; OG=/bin/false; SCRATCH="$W/scratch"; exchange() { echo "$W/ex"; }; teardown' _ "$E2E" >/dev/null 2>&1
+  local rc=$?
+  if [ "$works" = yes ]; then [ $rc -eq 0 ] && [ ! -e "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/ex/boxes/cub" ] && [ ! -e "$w/scratch" ]
+  else [ $rc -ne 0 ] && [ -d "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/scratch" ]; fi; }
+expect_cmd 0 "teardown removes its sandbox, then only og-e2e- boxes and its scratch folder" teardown_case yes
+expect_cmd 0 "…and a sandbox that won't go fails it, keeping its box and the scratch folder it mounts" teardown_case no
+fake sbx 0 $'NAME AGENT STATUS\ncub claude running\nog-e2e-20260101000000-1 claude stopped\nmy-og-e2e-thing claude running\n'
+
+# og's state is the scratch folder before any og command runs, leftover cleanup included
+expect_cmd 0 "the scratch state is set up before leftovers are removed" \
+  bash -c 'b=$(sed -n "/^main()/,/^}/p" "$E2E"); s=$(grep -n "setup_world" <<<"$b" | head -1 | cut -d: -f1)
+           l=$(grep -n "remove_leftovers" <<<"$b" | head -1 | cut -d: -f1); [ -n "$s" ] && [ -n "$l" ] && [ "$s" -lt "$l" ]'
+
 # it reads that a token item exists, by name; it never makes or rotates one
 expect_cmd 0 "it never runs og token" bash -c '! grep -nE "\"\\\$OG\"[^#]*[[:space:]]token([[:space:]]|$)" "$E2E"'
 
