@@ -19,7 +19,7 @@ fake() { printf '#!/bin/sh\necho "%s $*" >> "%s/calls"\nprintf "%%s" "%s"\nexit 
   chmod +x "$FAKE/$1"; }
 fake uname 0 'Darwin'
 fake sbx 0 $'NAME AGENT STATUS\ncub claude running\nog-e2e-20260101000000-1 claude stopped\nmy-og-e2e-thing claude running\n'
-fake op 0 ''
+fake op 0 'URL EMAIL USER ID'
 
 # run [VAR=value …]: the harness on the stand-ins, with only what's given set
 run() { env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:/bin" "$@" bash "$E2E"; }
@@ -33,8 +33,8 @@ fake uname 0 'Darwin'
 expect_cmd 0 "…and with no sbx" bash -c "$(declare -f run refuses fake); rm -f \"\$FAKE/sbx\"; refuses 'no sbx on PATH' OG_E2E=1"
 expect_cmd 0 "…and when sbx can't list (signed out)" bash -c "$(declare -f run refuses fake); fake sbx 1; refuses 'sbx login' OG_E2E=1"
 fake sbx 0 $'NAME AGENT STATUS\ncub claude running\nog-e2e-20260101000000-1 claude stopped\nmy-og-e2e-thing claude running\n'
-expect_cmd 0 "…and when 1Password isn't signed in" bash -c "$(declare -f run refuses fake); fake op 1; refuses 'op signin' OG_E2E=1"
-fake op 0 ''
+expect_cmd 0 "…and when 1Password has no account" bash -c "$(declare -f run refuses fake); fake op 1; refuses '1Password has no account here' OG_E2E=1"
+fake op 0 'URL EMAIL USER ID'
 expect_cmd 0 "…and with no owner named" refuses "OG_E2E_OWNER names the owner" OG_E2E=1
 expect_cmd 0 "…and with an owner that isn't a folder name" refuses "OG_E2E_OWNER names the owner" OG_E2E=1 OG_E2E_OWNER='Acme Corp'
 

@@ -64,12 +64,14 @@ preflight() {
   command -v sbx >/dev/null || refuse "no sbx on PATH: install Docker Sandboxes"
   sbx ls >/dev/null 2>&1 || refuse "sbx can't list sandboxes; signed in? run: sbx login"
   command -v op >/dev/null || refuse "no op on PATH: install the 1Password CLI"
-  op whoami >/dev/null 2>&1 || refuse "1Password isn't signed in; run: op signin"
+  # an account added, not a session open: with the 1Password app, the token read below
+  # unlocks it (Touch ID), the way og's own reads do; op whoami says "not signed in" until then
+  [[ -n "$(op account list 2>/dev/null)" ]] || refuse "1Password has no account here; run: op signin"
   OWNER="${OG_E2E_OWNER:-}"
   [[ "$OWNER" =~ ^[a-z0-9][a-z0-9-]*$ ]] \
     || refuse "OG_E2E_OWNER names the owner whose GitHub token item the test sandbox gets (lowercase, as its folder)"
   [[ -x "$OG" ]] || refuse "og isn't built in this checkout; run: $OGUN/setup.sh"
-  token_item_exists || refuse "no GitHub token item for $OWNER in your vault; make one with: og token $OWNER (this test never does)"
+  token_item_exists || refuse "no GitHub token item for $OWNER in your vault, or 1Password stayed locked; make one with: og token $OWNER (this test never does)"
 }
 
 # whether one of the items og would hand this owner's sandbox is in the vault (named, never read)
