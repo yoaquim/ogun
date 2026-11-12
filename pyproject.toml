@@ -1,0 +1,57 @@
+# og (docs/appendix/ogun-python.md). It runs from its own virtualenv, .venv,
+# which `uv sync` builds from uv.lock and nothing else: exact versions, sha256
+# hashes, wheels only. og itself is never built: setup.sh installs the command
+# below into that virtualenv, pointing at src/ as it is, so there's no build
+# system to download or run. Its unit tests are tests/, run by pytest.
+[project]
+name = "ogun"
+version = "0.1.0"
+description = "Claude Code in a Docker sandbox per project"
+requires-python = ">=3.12"
+dependencies = ["typer==0.27.3"]
+
+[project.scripts]
+og = "ogun.cli:main"
+
+[tool.uv]
+package = false
+# Only the uv in uv.pin builds this, and only the Python in .python-version
+# that uv downloads (checked against the checksums built into that uv): never
+# a Python already on the Mac, which Homebrew or Apple can change under it.
+required-version = "==0.9.26"
+python-preference = "only-managed"
+# A release has to be two weeks old before a lock can pick it: a hijacked
+# package is usually caught and pulled sooner than that.
+exclude-newer = "2026-10-13T00:00:00Z"
+# Wheels only: building an sdist runs its setup code at install time.
+no-build = true
+
+# Test and lint tools: pinned and locked like the runtime, installed into the same venv.
+[dependency-groups]
+dev = ["pytest==9.1.1", "pytest-xdist==3.8.0", "ruff==0.17.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+# in parallel, a worker per core: each test has its own scratch home and fakes; -n0 for one at a time
+addopts = "-p no:cacheprovider -n auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["src", "tests"]
+# og's venvs (.venv on a Mac, .venv-<system> elsewhere: bin/venv): ruff's own list has only
+# .venv, and a copy of og without git (or its .gitignore) would lint the rest
+extend-exclude = [".venv*"]
+
+[tool.ruff.lint]
+# Named here, not ruff's defaults, which change between releases: errors, imports,
+# likely bugs, simpler forms, and strings joined by accident inside a list.
+select = ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "ISC", "RUF"]
+# Long lines and dict(...) help tables with joined strings are how og writes its help
+# text, so they aren't flagged here. An except-pass reads as plainly as
+# contextlib.suppress.
+ignore = ["E501", "C408", "ISC004", "SIM105"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["typer.Argument", "typer.Option"]

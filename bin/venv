@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# venv — the folder og's Python lives in, for this checkout on this system: .venv on
+# a Mac (where setup.sh builds it), .venv-<system> anywhere else (a sandbox: Linux).
+# Each system keeps its own, so a copy a Mac and a sandbox both see (a mount) never has one's
+# venv replaced by the other's. setup.sh and the tests both ask here: the rule is one copy.
+#   venv           its path
+#   venv --ready   exit 0 when it's built: its Python loads og's packages and og itself,
+#                  and its og command is there. A build whose package downloads failed
+#                  leaves a Python that starts without them
+here=$(cd -P "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+sys=$(uname -s | tr '[:upper:]' '[:lower:]')
+if [[ "$sys" == darwin ]]; then dir="$here/.venv"; else dir="$here/.venv-$sys"; fi
+if [[ "${1:-}" == --ready ]]; then
+    "$dir/bin/python" -I -c 'import typer, rich, ogun.cli' 2>/dev/null && [[ -x "$dir/bin/og" ]]
+    exit
+fi
+printf '%s\n' "$dir"

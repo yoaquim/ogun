@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" width="22" height="22">
+<!-- og's mark, drawn 1:1: a 22px dark grey square r4, an 11px white square r2
+     centred in it, a 4px teal dot r1 at its centre; light colours, then dark. -->
+<style>
+.o { fill: #4D4D4D; } .i { fill: #FFFFFF; } .d { fill: #0F7A6E; }
+@media (prefers-color-scheme: dark) { .o { fill: #E8E8E6; } .i { fill: #212120; } .d { fill: #5CC9B6; } }
+</style>
+<rect class="o" width="22" height="22" rx="4"/>
+<rect class="i" x="5.5" y="5.5" width="11" height="11" rx="2"/>
+<rect class="d" x="9" y="9" width="4" height="4" rx="1"/>
+</svg>

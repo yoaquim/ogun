@@ -1,0 +1,8 @@
+# og's Python, built by setup.sh (.venv on a Mac, .venv-<system> elsewhere; bin/venv picks)
+/.venv/
+/.venv-*/
+# what running og and its tests leaves behind
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/

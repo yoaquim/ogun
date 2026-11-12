@@ -1,0 +1,9 @@
+# The uv setup.sh installs to build ogun's venv (docs/appendix/ogun-python.md).
+# To bump it: the version, pyproject.toml's
+# required-version to match, and each archive's SHA-256, copied from the release
+# (gh api repos/astral-sh/uv/releases/tags/<version>, `digest`).
+version 0.9.26
+aarch64-apple-darwin fcf0a9ea6599c6ae28a4c854ac6da76f2c889354d7c36ce136ef071f7ab9721f
+x86_64-apple-darwin 171eb8c518313e157c5b4cec7b4f743bc6bab1bd23e09b646679a02d096a047f
+aarch64-unknown-linux-gnu f71040c59798f79c44c08a7a1c1af7de95a8d334ea924b47b67ad6b9632be270
+x86_64-unknown-linux-gnu 30ccbf0a66dc8727a02b0e245c583ee970bdafecf3a443c1686e1b30ec4939e8

@@ -1,0 +1,5 @@
+# og's tests' OpenAPPA pin, in appa.lock's format (docs/appa.md): a release and each
+# Linux archive's SHA-256. A fixture: nothing installs from it.
+version v0.37.0
+aarch64-unknown-linux-gnu b0200491936139fb5daa4bd30783064ab01e5cf4ec575144f12dac698170ce32
+x86_64-unknown-linux-gnu 195b0321e1a4fa87f76bd9978255187d6ce52f6316a60a640f4dd059540cc0aa

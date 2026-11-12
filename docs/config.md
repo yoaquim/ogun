@@ -1,0 +1,125 @@
+# og's config folder
+
+og keeps what's yours apart from what's its own. Its own files (the scripts it sends into a
+sandbox, its default network baseline) ship inside og. Yours live in one folder,
+`~/.config/ogun/` (or `$XDG_CONFIG_HOME/ogun/`), beside the settings file:
+
+| File | What it's for | Missing means |
+|---|---|---|
+| `config.toml` | plain settings: the 1Password vault, folders, timeouts, shared or in a profile ([profiles](appendix/flags-and-env.md#profiles)) | every default |
+| `profile` | one line: which profile of `config.toml` this Mac uses (`OG_PROFILE` wins over it) | no profile: only the shared settings, and nothing per-profile applies |
+| `registry.json` | the repos og knows: their owners, read-only mounts, secret grants, MCP servers and templates | no registry: no mounts, grants or MCP servers; `og project` says so |
+| `marketplaces.json` | the plugin marketplaces this Mac's sandboxes mount | no plugins |
+| `templates/` | the recipes `og template` builds sandbox images from, `<name>.sh` each | no templates: a create uses sbx's own image; `og template` says so |
+| `baseline.env` | the network baseline every sandbox gets, in place of og's own | og's own baseline |
+| `appa.lock` | the OpenAPPA release sandboxes install, by version and SHA-256 | no OpenAPPA: `--appa` says so |
+
+Each file may be a link, and is read through it; an edit og makes (`og project add`) goes to
+the file the link points at, never replacing the link. A file that's there but can't be read
+as what it should be (JSON that doesn't parse, a `baseline.env` line that isn't
+`NAME="value"`, a file that isn't text or that og can't open) stops og with one line naming it: it's never skipped, since skipping a broken
+registry would read as "nothing granted".
+
+A `baseline.env` here replaces og's own whole. There's no merge: what's allowed is always
+the content of one file. So it sets all three lists, `SBX_BASELINE_DOMAINS`,
+`SBX_BASELINE_HTTP` and `SBX_DEFAULT_RULES_OFF` (an empty one is
+`NAME=""`); one left out stops og, naming it.
+
+## Treat these as code
+
+These files decide what sandboxes get: a change to the registry, a recipe or a pin deserves
+the care a code change does. Each may be a link to a file kept elsewhere. `profile` stays a
+plain file, each Mac's own choice.
+
+## Handing og to a team
+
+og names nothing of any one Mac's setup: everything that's a Mac's own is in this folder, so a
+team gets og by cloning its repo and writing a folder of their own. With none of it, og still
+runs: no registry, templates, plugins or OpenAPPA, og's own baseline, nothing provisioned,
+each said once where it matters.
+
+What they write, each optional:
+
+| File | What to put in it |
+|---|---|
+| `config.toml` | the settings below, shared or per profile |
+| `profile` | one line, the profile this Mac uses (or `OG_PROFILE`) |
+| `registry.json` | their repos: owners, mounts, grants, MCP servers ([registry](sandboxes.md)) |
+| `marketplaces.json` | the plugin marketplaces their sandboxes mount |
+| `templates/` | their recipes, `<name>.sh` each ([templates](templates.md)) |
+| `baseline.env` | a network baseline of their own, all three lists |
+| `appa.lock` | the OpenAPPA release to install, if they use it |
+
+Tab completion for `og` is `completion.bash`, sourced from their shell profile;
+`setup.sh` ends by saying so.
+
+The settings (each also an environment variable; defaults and details in
+[flags and environment](appendix/flags-and-env.md)):
+
+| Setting | For |
+|---|---|
+| `SBX_VAULT` | the 1Password vault their tokens and secrets live in |
+| `SBX_PROJECTS` | their project folders, per-owner or one owner each |
+| `SBX_TOKEN_NAME`, `SBX_TOKEN_SUFFIX` | how their token items are named, and which a Mac may use |
+| `SBX_GITHUB_OWNERS` | the GitHub account behind a project folder whose name differs, for `og token`'s form |
+| `SBX_PROTECTED_KEYS` | the keys that must never go into a sandbox: a commit-signing key, git's `allowed_signers`, say |
+| `SBX_PROVISION` | the command that sets up each sandbox (their own setup script) |
+| `SBX_SKILLS_DIR` | the skills folder mirrored into sbx's skills store |
+| `SBX_HOST_RO_MOUNTS` | host folders every sandbox reads (none by default; a folder of shared settings, say) |
+| `SBX_APT_TOOLS` | apt tools beyond og's own, in every sandbox and template |
+| `SBX_EXCHANGE`, `SBX_TAKE_DEST` | the file exchange, and where `og give` and `og take` look |
+| `SBX_SSH_DIR`, `SBX_SKILLS_STORE`, `SBX_APPA_LOCK` | where the ssh keys, sbx's skills store and the OpenAPPA pin are, if not the defaults |
+| `SBX_OGUN_DIR`, `SBX_SECRETS_APPROVED`, `SBX_EGRESS_APPROVED` | og's own state: records, approvals |
+| `SBX_RM_PROBE_TIMEOUT`, `SBX_RM_BOOT_TIMEOUT`, `SBX_CLAUDE_UPDATE_TIMEOUT`, `SBX_CLAUDE_UPDATE_LOG` | timeouts, and where the Claude Code update logs |
+
+## Make sandboxes your own
+
+og sets up only what it needs itself. Everything else a sandbox should have, you add with
+these, and og runs or mounts what they name without knowing what's in it:
+
+| To | Use |
+|---|---|
+| give every sandbox host folders, read-only | `SBX_HOST_RO_MOUNTS`: mounted at their own paths (a Mac path inside is the same path), live |
+| give one repo's sandbox other repos, read-only | that repo's `repos.read` in `registry.json` ([sandboxes](sandboxes.md)) |
+| run your own setup in every sandbox | `SBX_PROVISION`: a command run inside at create and on every attach, so it must be safe to run again |
+| install extra apt packages | `SBX_APT_TOOLS` |
+| bake heavier tools into an image | a recipe in `templates/` ([templates](templates.md)) |
+
+The setup command runs inside the sandbox, so the script it names has to be there: keep it
+in a folder `SBX_HOST_RO_MOUNTS` mounts. A leading `~/` in either is your Mac's home:
+
+```toml
+SBX_HOST_RO_MOUNTS = "~/sandbox-setup"
+SBX_PROVISION = "~/sandbox-setup/provision.sh"
+```
+
+### Example: AWS
+
+og doesn't set up AWS. The proxy can't inject AWS credentials (requests are signed rather
+than carrying a token), so access lives inside each sandbox as a short-lived SSO session:
+
+- **The CLI:** install it from your setup script, or in a template's recipe so it's baked in.
+- **Profiles:** mount the folder holding your AWS config and point `AWS_CONFIG_FILE` at it
+  from your setup script, or have the script write one. A config holds identifiers only;
+  no keys or sessions leave the Mac.
+- **Login:** run `aws sso login --profile <p> --use-device-code` inside the sandbox and
+  approve the code in the Mac's browser. The sandbox asks you to approve the login's hosts
+  the first time, as it does any host outside the baseline
+  ([network](network.md#what-the-baseline-leaves-out)).
+
+### Example: the Mac's fonts
+
+For a sandbox to render with the Mac's fonts (a browser, a PDF tool), mount the font
+folders and point fontconfig at them from your setup script:
+
+```toml
+SBX_HOST_RO_MOUNTS = "~/sandbox-setup:~/Library/Fonts:/Library/Fonts"
+```
+
+```bash
+# in provision.sh: the mounts keep their Mac paths
+mkdir -p ~/.config/fontconfig
+{ echo '<?xml version="1.0"?>'; echo '<fontconfig>'
+  for d in /Users/*/Library/Fonts /Library/Fonts; do [ -d "$d" ] && echo "  <dir>$d</dir>"; done
+  echo '</fontconfig>'; } > ~/.config/fontconfig/fonts.conf
+```
