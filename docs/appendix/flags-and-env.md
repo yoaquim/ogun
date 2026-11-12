@@ -56,7 +56,7 @@ reads as no profile.
 | `SBX_SKILLS_DIR` | none: no mirror | the folder of skills mirrored into sbx's skills store (`~/` is your home); unset, a create mirrors nothing and says so once, and `og skills` fails saying so. |
 | `SBX_PROVISION` | none: nothing run | a command run inside every sandbox at create and on every attach (so it must be safe to run again), with `bash -lc`; a leading `~/` is your home, where sbx mounts host folders. A failure stops a create, and only warns on an attach. Unset, nothing runs, said once. |
 | `SBX_SSH_DIR` | `~/.ssh` | where `sandbox/` (the keys folder) and the signer files are looked up |
-| `SBX_OGUN_DIR` | `~/.config/sbx/ogun` | ogun's own state: the create records (`sandboxes/`); each sandbox's GitHub token owner and item, and each owner's token expiry (`tokens/`; one an older og left in `~/.config/sbx` is still read) |
+| `SBX_OGUN_DIR` | `~/.config/sbx/ogun` | ogun's own state: the create records (`sandboxes/`); each sandbox's GitHub token owner and item, and each owner's token expiry (`tokens/`) |
 | `SBX_CLAUDE_UPDATE_TIMEOUT` | `300` | seconds for `claude update` in a sandbox (about 230 MB) |
 | `SBX_CLAUDE_UPDATE_LOG` | `/tmp/ogun-claude-update.log` | the updater's log inside the sandbox, shown when the update times out |
 | `SBX_SECRETS_APPROVED` | `~/.config/sbx/ogun/approved-secrets` | the secret grants this Mac has approved ([Secrets](../secrets.md#secret-grants)) |
