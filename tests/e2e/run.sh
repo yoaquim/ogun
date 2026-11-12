@@ -5,6 +5,9 @@
 #
 #   OG_E2E=1 OG_E2E_OWNER=acme tests/e2e/run.sh
 #
+# It runs this copy's og from its own folder: set the copy up with `OG_BIN= ./setup.sh`,
+# so the og on your PATH stays the one you use.
+#
 # It checks a sandbox's whole life, in order, stopping at the first that fails: create, its
 # token, the network (a baseline host answers; example.com, outside it, is refused, which
 # may leave a request for approval on your Mac until the sandbox goes), the file exchange
