@@ -77,8 +77,10 @@ print(github.vault()); print(*github.items(sys.argv[2]), sep="\n")' "$OGUN/src" 
 
 # ── names and the scratch world ──
 
-# the sandboxes sbx lists whose names start with the prefix, and nothing else
-leftovers() { sbx ls 2>/dev/null | awk -v p="$PREFIX" 'NR > 1 && index($1, p) == 1 { print $1 }'; }
+# the sandboxes sbx lists whose names start with the prefix, and nothing else; a list sbx
+# couldn't give fails, never reads as none left
+leftovers() { local all; all=$(sbx ls 2>/dev/null) || return 1
+  awk -v p="$PREFIX" 'NR > 1 && index($1, p) == 1 { print $1 }' <<<"$all"; }
 
 exchange() { "$OG" internal paths 2>/dev/null | awk -F'\t' '$1 == "EXCHANGE" { print $2 }'; }
 
@@ -101,12 +103,20 @@ setup_world() {
 # every og-e2e sandbox, this run's and any earlier run's, then their boxes. A sandbox that
 # won't go keeps its box (it's mounted there) and fails this, naming it: never a quiet pass
 remove_leftovers() {
-  local n ex stuck=()
+  local n ex names stuck=()
+  if ! names=$(leftovers); then
+    say "og e2e: sbx couldn't list its sandboxes, so every og-e2e box and the scratch folder are kept" >&2
+    return 1
+  fi
   while read -r n; do
     [[ -n "$n" ]] || continue
     "$OG" rm "$n" --force >/dev/null 2>&1 || sbx rm "$n" --force >/dev/null 2>&1
-  done < <(leftovers)
-  while read -r n; do [[ -n "$n" ]] && stuck+=("$n"); done < <(leftovers)   # what sbx still lists
+  done <<<"$names"
+  if ! names=$(leftovers); then   # what sbx still lists
+    say "og e2e: sbx couldn't list its sandboxes after removing them, so every og-e2e box and the scratch folder are kept" >&2
+    return 1
+  fi
+  while read -r n; do [[ -n "$n" ]] && stuck+=("$n"); done <<<"$names"
   if (( ${#stuck[@]} )); then
     say "og e2e: couldn't remove ${stuck[*]}; its box and the scratch folder are kept. By hand:" >&2
     printf '  sbx rm %s --force\n' "${stuck[@]}" >&2

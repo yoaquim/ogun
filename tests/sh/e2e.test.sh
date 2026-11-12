@@ -49,6 +49,7 @@ teardown_case() { local works="$1" w; w=$(mktemp -d)
   printf 'og-e2e-x\n' > "$w/listed"
   cat > "$FAKE/sbx" <<SH
 #!/bin/sh
+[ "$works" = down ] && exit 1
 case "\$1" in
   ls) echo "NAME AGENT STATUS"; while read -r n; do echo "\$n claude stopped"; done < "$w/listed" ;;
   rm) [ "$works" = yes ] && : > "$w/listed"; [ "$works" = yes ] ;;
@@ -62,6 +63,7 @@ SH
   else [ $rc -ne 0 ] && [ -d "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/scratch" ]; fi; }
 expect_cmd 0 "teardown removes its sandbox, then only og-e2e- boxes and its scratch folder" teardown_case yes
 expect_cmd 0 "…and a sandbox that won't go fails it, keeping its box and the scratch folder it mounts" teardown_case no
+expect_cmd 0 "…and so does an sbx that can't list (down): nothing is read as gone" teardown_case down
 fake sbx 0 $'NAME AGENT STATUS\ncub claude running\nog-e2e-20260101000000-1 claude stopped\nmy-og-e2e-thing claude running\n'
 
 # og's state is the scratch folder before any og command runs, leftover cleanup included
