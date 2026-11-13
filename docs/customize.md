@@ -71,8 +71,9 @@ Name it in both settings, or link `~/sandbox-setup` to it; links work:
 - **A linked folder.** og mounts the folder the link points to, and makes the same link
   inside the sandbox, so `~/sandbox-setup/provision.sh` runs there as it does on the Mac. The
   same goes for a plugin marketplace whose path is a link.
-- **Linked skills.** A skill in `skills_dir` that links to a folder elsewhere arrives in the
-  store as its files.
+- **Linked skills.** Every link in `skills_dir` arrives in the store as what it points to,
+  resolved where it is on the Mac. A link to nothing, or to a folder that holds it, is left
+  out and said.
 - **A link to something outside the mounts** (a `CLAUDE.md` that links to `~/notes/agent.md`)
   points at nothing inside: og mounts only what you name. At create it says which link, and
   which folder to add to `host_ro_mounts` for it.

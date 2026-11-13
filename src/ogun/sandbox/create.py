@@ -48,10 +48,10 @@ def skills_dir() -> str:
     return str(Path(v).expanduser()) if v else ""
 
 
-def dangling(src: str) -> list[str]:
-    """The links under src that point to nothing, relative to src, as rsync sees them:
-    through linked folders too, under every name one is reached by (rsync copies each),
-    never into a folder that holds it (a loop)."""
+def left_out(src: str) -> list[tuple[str, str]]:
+    """What the skills mirror can't copy, relative to src as rsync sees it, and why: a
+    link to nothing, and a link to a folder that holds it (a loop). Checked under every
+    name a folder is reached by, since rsync copies each."""
     out = []
 
     def walk(d: str, rel: str, above: frozenset) -> None:
@@ -62,10 +62,12 @@ def dangling(src: str) -> list[str]:
         for e in entries:
             r = os.path.join(rel, e.name) if rel else e.name
             if e.is_symlink() and not os.path.exists(e.path):
-                out.append(r)
+                out.append((r, "links to nothing"))
             elif e.is_dir():
                 real = os.path.realpath(e.path)
-                if real not in above:
+                if real in above:
+                    out.append((r, "links to a folder that holds it"))
+                else:
                     walk(e.path, r, above | {real})
 
     walk(src, "", frozenset({os.path.realpath(src)}))
@@ -93,16 +95,18 @@ def skills() -> bool:
     except OSError:
         log.err(f"og: couldn't make the skills store at {log.path(store)}")
         return False
-    # --copy-unsafe-links: a skill linked in from elsewhere arrives as its files, never a
-    # link to a Mac path no sandbox has. A link to nothing would fail the whole copy:
-    # said, and left out; --delete-excluded drops what an earlier mirror copied of it
+    # --copy-links: every link arrives as what it points to, resolved where it is on the
+    # Mac (a skill linked in from elsewhere, its own ../ links), never a link to a path no
+    # sandbox has. One rsync can't copy would fail the whole mirror: said, and left out;
+    # --delete-excluded drops what an earlier mirror copied of it
     skip = []
-    for rel in dangling(src):
-        log.warn(f"  {log.WARNING} {log.path(os.path.join(src, rel))} links to nothing; left out of the skills store", err=True)
+    for rel, why in left_out(src):
+        log.warn(f"  {log.WARNING} {log.path(os.path.join(src, rel))} {why}; left out of the skills store", err=True)
         skip += ["--exclude", "/" + re.sub(r"([*?\[\\])", r"\\\1", rel)]
-    if (subprocess.run(["rsync", "-a", "--copy-unsafe-links", *skip, "--delete", "--delete-excluded", f"{src}/",
-                        f"{store}/"]).returncode
-            or subprocess.run(["chmod", "-R", "a-w", str(store)]).returncode):
+    synced = subprocess.run(["rsync", "-a", "--copy-links", *skip, "--delete", "--delete-excluded", f"{src}/",
+                             f"{store}/"]).returncode == 0
+    # locked again whatever the copy did: a failed one must not leave the store writable
+    if not (subprocess.run(["chmod", "-R", "a-w", str(store)]).returncode == 0 and synced):
         log.err(f"og: couldn't mirror {log.path(src)} into sbx's skills store (above)")
         return False
     n = sum(1 for x in store.iterdir() if x.is_dir() and not x.is_symlink())

@@ -113,8 +113,30 @@ def test_a_folder_two_skills_link_to_is_checked_under_each_name(og, store, home)
     assert "skills/a/bad links to nothing" in out + err and "skills/b/bad links to nothing" in out + err
 
 
-def test_a_linked_folder_that_holds_itself_is_walked_once(store, home):
-    from ogun.sandbox import create
+def test_a_link_to_a_folder_that_holds_it_is_said_and_left_out_never_copied_round(og, store, home):
     (home / "agent-config/skills/outline/loop").symlink_to(home / "agent-config/skills")
-    (home / "agent-config/skills/outline/bad").symlink_to(home / "missing")
-    assert create.dangling(str(home / "agent-config/skills")) == ["outline/bad"]
+    code, out, err = og("skills")
+    assert code == 0 and (store / "outline/SKILL.md").is_file() and not os.path.lexists(store / "outline/loop")
+    assert "~/agent-config/skills/outline/loop links to a folder that holds it; left out" in out + err
+
+
+def test_a_linked_skills_own_relative_links_resolve_where_it_really_is(og, store, home):
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/support").mkdir()
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "elsewhere/support/helper.sh").write_text("echo hi\n")
+    (home / "elsewhere/review/support").symlink_to("../support")
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    assert og("skills")[0] == 0
+    assert not (store / "review/support").is_symlink() and (store / "review/support/helper.sh").read_text() == "echo hi\n"
+
+
+def test_a_mirror_that_fails_still_leaves_the_store_read_only(og, store, home, monkeypatch):
+    og("skills")
+    real = __import__("subprocess").run
+
+    def failing_rsync(cmd, *a, **k):
+        return real(["false"], *a, **k) if cmd[0] == "rsync" else real(cmd, *a, **k)
+    monkeypatch.setattr("ogun.sandbox.create.subprocess.run", failing_rsync)
+    code, out, err = og("skills")
+    assert code == 1 and "couldn't mirror" in out + err and writable(store) == []
