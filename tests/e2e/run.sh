@@ -11,7 +11,8 @@
 # It checks a sandbox's whole life, in order, stopping at the first that fails: create, its
 # token, the network (a baseline host answers; example.com, outside it, is refused, which
 # may leave a request for approval on your Mac until the sandbox goes), the file exchange
-# (og give, og take, a program in out/ quarantined) and og rm, with nothing of it left.
+# (og give, og take, a program in out/ quarantined, a script made unable to run) and og rm,
+# with nothing of it left.
 #
 # Everything it makes is named og-e2e-<run id>: the sandbox, its repo, its exchange box.
 # Teardown runs on every exit (a pass, a failure, an interrupt) and removes only names with
@@ -229,12 +230,22 @@ taken() {
   [[ "$(cat "$OG_TAKE_DEST/report.txt" 2>/dev/null)" == "taken $RUN" && ! -e "$(box)/out/report.txt" ]]
 }
 
+# a program (the sandbox's own /bin/true, a Linux binary) is quarantined, never delivered
 quarantined() {
   # shellcheck disable=SC2016  # expands in the sandbox's sh
-  inside sh -c 'printf "#!/bin/sh\necho hi\n" > "$1/tool.sh" && chmod +x "$1/tool.sh"' _ "$(box)/out" || return 1
-  og_ take "$NAME" tool.sh </dev/null
+  inside sh -c 'cp /bin/true "$1/tool"' _ "$(box)/out" || return 1
+  og_ take "$NAME" tool </dev/null
   local q; q="$(exchange)/.quarantine/$NAME"
-  [[ ! -e "$OG_TAKE_DEST/tool.sh" && ! -e "$(box)/out/tool.sh" && -d "$q" ]] && [[ -n "$(ls -A "$q")" ]]
+  [[ ! -e "$OG_TAKE_DEST/tool" && ! -e "$(box)/out/tool" && -d "$q" ]] && [[ -n "$(ls -A "$q")" ]]
+}
+
+# a script with its exec bit comes back unable to run, carrying Gatekeeper's mark
+defanged() {
+  # shellcheck disable=SC2016  # expands in the sandbox's sh
+  inside sh -c 'printf "#!/bin/sh\necho hi\n" > "$1/tool.sh" && chmod +x "$1/tool.sh"' _ "$(box)/out" || return 1
+  og_ take "$NAME" tool.sh </dev/null || return 1
+  local f="$OG_TAKE_DEST/tool.sh"
+  [[ -f "$f" && ! -x "$f" ]] && xattr -p com.apple.quarantine "$f"
 }
 
 removed() { og_ rm "$NAME" --force </dev/null || return 1; listed; [[ $? -eq 1 ]]; }
@@ -259,6 +270,7 @@ checks() {
   check "a file given with og give reads inside" given || return
   check "a file left in out/ comes back with og take" taken || return
   check "a program left in out/ is quarantined, never delivered" quarantined || return
+  check "a script left in out/ comes back unable to run, marked for Gatekeeper" defanged || return
   check "og rm removes it" removed || return
   check "nothing of it is left: no box, no stored secret, nothing for og tidy" nothing_left
 }
