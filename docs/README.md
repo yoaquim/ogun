@@ -147,6 +147,7 @@ A **GitHub token rotation** isn't immediate either. See
 ## Reference
 
 - [og's config folder](config.md): your own files, apart from og's
+- [Make sandboxes yours](customize.md): your Claude setup, skills, plugins, MCP servers, packages and mounts
 - [Appendix: flags and environment](appendix/flags-and-env.md)
 - [Appendix: ogun's Python](appendix/ogun-python.md)
 - [Testing og](testing.md): the suite, the container, CI, and the end-to-end test on a Mac
