@@ -92,9 +92,9 @@ It checks, in order, stopping at the first that fails:
 6. `og rm` removes it, and nothing of it is left: no folder, no stored secret, nothing
    `og tidy` reports.
 
-A failed check prints the last lines its command printed, and every check's output is kept in
-a log whose path the run names. Exit: 0 every check passed, 1 one failed, 2 it refused to
-start.
+A failed check prints the last lines its command printed. Every check's output is kept in a
+log in `$TMPDIR` (`og-e2e-<run id>.log`), and a failed run names its path. Exit: 0 every
+check passed, 1 one failed, 2 it refused to start.
 
 ### What it touches
 
