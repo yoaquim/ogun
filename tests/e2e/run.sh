@@ -34,10 +34,11 @@ VENV="$(PATH=/usr/bin:/bin "$OGUN/bin/venv")"   # og's venv for this system, fou
 OG="$VENV/bin/og"
 PY="$VENV/bin/python"
 # og's config folder: none during preflight (og reads a missing one as every default), the
-# scratch folder's after; set on og's own command line, so sbx, op and git keep theirs
+# scratch folder's after; set on og's own command line, so sbx, op and git keep theirs. A
+# profile your shell names is dropped too: no config folder of og's has it
 CFG="${TMPDIR:-/tmp}/og-e2e-no-config-$$"
 
-og_() { XDG_CONFIG_HOME="$CFG" "$OG" "$@"; }
+og_() { env -u OG_PROFILE XDG_CONFIG_HOME="$CFG" "$OG" "$@"; }
 
 # ── output ──
 
@@ -99,7 +100,7 @@ preflight() {
 # whether one of the items og would hand this owner's sandbox is in the vault (named, never read)
 token_item_exists() {
   local found vault it
-  found=$(XDG_CONFIG_HOME="$CFG" "$PY" -I -c 'import sys; sys.path.insert(0, sys.argv[1])
+  found=$(env -u OG_PROFILE XDG_CONFIG_HOME="$CFG" "$PY" -I -c 'import sys; sys.path.insert(0, sys.argv[1])
 from ogun.secrets import github
 print(github.vault()); print(*github.items(sys.argv[2]), sep="\n")' "$OGUN/src" "$OWNER" 2>/dev/null) || return 1
   vault=$(head -n1 <<<"$found")
@@ -160,7 +161,7 @@ remove_leftovers() {
     printf '  sbx rm %s --force\n' "${stuck[@]}" >&2
     return 1
   fi
-  remove_secrets
+  remove_secrets || return 1   # its folders and the scratch folder are kept: the run fails either way
   ex="$(exchange)"
   if [[ -n "$ex" ]]; then
     for d in boxes .quarantine shared; do
@@ -171,12 +172,27 @@ remove_leftovers() {
 }
 
 # the secrets sbx still stores for og-e2e sandboxes, which are gone by now
+# fails, naming what's left, when sbx can't list them or one stays stored
 remove_secrets() {
-  local sb kind
+  local sb kind left
+  stored_secrets >/dev/null || { say "og e2e: sbx couldn't list its stored secrets; any og-e2e one is still stored" >&2; return 1; }
   while read -r sb kind; do
-    sbx secret rm "$kind" --sandbox "$sb" -f </dev/null >/dev/null 2>&1
-  done < <(sbx secret ls 2>/dev/null | awk -v p="$PREFIX" 'index($1, p) == 1 && $2 == "service" { print $1, $3 }')
+    [[ -n "$sb" ]] && sbx secret rm "$kind" --sandbox "$sb" -f </dev/null >/dev/null 2>&1
+  done <<<"$(stored_secrets)"
+  if ! left=$(stored_secrets); then
+    say "og e2e: sbx couldn't list its stored secrets after removing them; any og-e2e one is still stored" >&2
+    return 1
+  fi
+  if [[ -n "$left" ]]; then
+    say "og e2e: couldn't remove these stored secrets. By hand:" >&2
+    awk '{ printf "  sbx secret rm %s --sandbox %s\n", $2, $1 }' <<<"$left" >&2
+    return 1
+  fi
 }
+
+# "<sandbox> <service>" for each service secret sbx stores for an og-e2e sandbox
+stored_secrets() { local all; all=$(sbx secret ls 2>/dev/null) || return 1
+  awk -v p="$PREFIX" 'index($1, p) == 1 && $2 == "service" { print $1, $3 }' <<<"$all"; }
 
 # the scratch world, once nothing mounts it any more
 remove_scratch() { [[ -n "${SCRATCH:-}" && -d "$SCRATCH" ]] && rm -rf "$SCRATCH"; return 0; }

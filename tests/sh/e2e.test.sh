@@ -42,11 +42,13 @@ expect_cmd 0 "…and with one that isn't an item's ending" refuses "OG_TOKEN_NAM
 
 # og runs with a config folder of its own, never yours, and only og's command line carries it
 own_config() {
-  grep -qF 'og_() { XDG_CONFIG_HOME="$CFG" "$OG" "$@"; }' "$E2E" || return 1
+  grep -qF 'og_() { env -u OG_PROFILE XDG_CONFIG_HOME="$CFG" "$OG" "$@"; }' "$E2E" || return 1
   # "$OG" itself only in og_ and the built check; XDG_CONFIG_HOME never exported to sbx, op or git
   [[ "$(grep -v '^ *#' "$E2E" | grep -cF '"$OG"')" == 2 ]] && ! grep -q 'export XDG_CONFIG_HOME' "$E2E"
 }
 expect_cmd 0 "every og it runs names its own config folder, on og's command line alone" own_config
+expect_cmd 0 "…and drops a profile your shell names, which no folder of its has" \
+  bash -c '[ "$(grep -c "env -u OG_PROFILE XDG_CONFIG_HOME=\"\$CFG\"" "$E2E")" = 2 ]'
 
 # what teardown would remove: only the sandboxes named with the prefix, from sbx's own list
 only_its_own() { local o; o=$(env -i HOME="$TEST_TMP/home" PATH="$FAKE:/usr/bin:/bin" OG_E2E_SOURCE=1 \
@@ -62,10 +64,11 @@ teardown_case() { local works="$1" w; w=$(mktemp -d)
 #!/bin/sh
 [ "$works" = down ] && exit 1
 case "\$1 \$2" in
-  "secret ls") printf '%s\\n' "SCOPE TYPE NAME" "(global) service github" "cub service github" "og-e2e-x service github" ;;
-  "secret rm") echo "\$*" >> "$w/secret-rm" ;;
+  "secret ls") printf '%s\\n' "SCOPE TYPE NAME" "(global) service github" "cub service github"
+               [ -e "$w/secrets-gone" ] || echo "og-e2e-x service github" ;;
+  "secret rm") echo "\$*" >> "$w/secret-rm"; [ "$works" = yes ] && echo gone > "$w/secrets-gone"; [ "$works" != secret ] ;;
   ls*) echo "NAME AGENT STATUS"; while read -r n; do echo "\$n claude stopped"; done < "$w/listed" ;;
-  rm*) [ "$works" = yes ] && : > "$w/listed"; [ "$works" = yes ] ;;
+  rm*) [ "$works" = no ] || : > "$w/listed"; [ "$works" != no ] ;;
 esac
 SH
   chmod +x "$FAKE/sbx"
@@ -75,10 +78,12 @@ SH
   if [ "$works" = yes ]; then [ $rc -eq 0 ] && [ ! -e "$w/scratch" ] || return 1
     for d in boxes .quarantine shared; do [ ! -e "$w/ex/$d/og-e2e-x" ] && [ -d "$w/ex/$d/cub" ] || return 1; done
     [ "$(cat "$w/secret-rm" 2>/dev/null)" = "secret rm github --sandbox og-e2e-x -f" ]
+  elif [ "$works" = secret ]; then [ $rc -ne 0 ] && [ -d "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/scratch" ] && [ -e "$w/secret-rm" ]
   else [ $rc -ne 0 ] && [ -d "$w/ex/boxes/og-e2e-x" ] && [ -d "$w/scratch" ] && [ ! -e "$w/secret-rm" ]; fi; }
 expect_cmd 0 "teardown removes its sandbox, then only og-e2e- secrets, folders (box, quarantine, shared) and its scratch" teardown_case yes
 expect_cmd 0 "…and a sandbox that won't go fails it, keeping its box and the scratch folder it mounts" teardown_case no
 expect_cmd 0 "…and so does an sbx that can't list (down): nothing is read as gone" teardown_case down
+expect_cmd 0 "…and so does a stored secret that won't go, keeping the folders and scratch" teardown_case secret
 fake sbx 0 $'NAME AGENT STATUS\ncub claude running\nog-e2e-20260101000000-1 claude stopped\nmy-og-e2e-thing claude running\n'
 
 # the checks run in order and the first that fails stops the rest, said and counted
@@ -97,12 +102,17 @@ shows_why() { local o; o=$(env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 bash -c '. 
 expect_cmd 0 "a failing check shows what its command printed, and passing ones pass after it" shows_why
 
 # its status as og reads it: sbx's own mark taken off, and no listing never read as gone
-status_of() { env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 J="$1" bash -c '. "$1"; NAME=og-e2e-x
+status_of() { env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 J="$1" P="$OG_PY" bash -c '. "$1"; NAME=og-e2e-x PY="$P"
     og_() { printf "%s" "$J"; }; listed; echo "rc=$?"' _ "$E2E"; }
+if [[ -n "$OG_PY" ]]; then
 expect_cmd 0 "a sandbox og lists reads with its status" \
   bash -c "$(declare -f status_of); [ \"\$(status_of '[{\"sandbox\":\"og-e2e-x\",\"status\":\"running\"}]')\" = \$'running\\nrc=0' ]"
 expect_cmd 0 "…one it doesn't list reads as not listed (1)" bash -c "$(declare -f status_of); [ \"\$(status_of '[]')\" = \$'\\nrc=1' ]"
 expect_cmd 0 "…and a listing og couldn't give is neither (2)" bash -c "$(declare -f status_of); [ \"\$(status_of '')\" = rc=2 ]"
+else
+  echo "  skip  how it reads a status: og's Python isn't built here — run: $OGUN/setup.sh"
+  [[ -n "${TEST_SKIPS:-}" ]] && printf '%s\n' "$(basename "$0")" >> "$TEST_SKIPS"
+fi
 
 # what curl reads back: refused is the proxy's 403 (on the request or its CONNECT), never a host that didn't answer
 reads() { env -i PATH=/usr/bin:/bin OG_E2E_SOURCE=1 bash -c '. "$1"; '"$1" _ "$E2E"; }
