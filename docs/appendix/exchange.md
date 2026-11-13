@@ -83,9 +83,9 @@ check that:
 - `inbox/` is read-only inside; the sandbox's own `in/` is mounted read-only, and another
   sandbox's `in/` isn't visible;
 - another sandbox's `shared/` directory can't be written;
-- a symlink, a fake `.pdf` (really a Mach-O), an exec-bit file and an oversized file in
-  `out/` each get quarantined;
-- a taken PDF carries the quarantine xattr;
+- a symlink, a fake `.pdf` (really a Mach-O), a program and an oversized file in `out/`
+  each get quarantined; a script with its exec bit comes back without it;
+- a taken file carries the quarantine xattr;
 - `shared/`'s git log attributes a handoff to the right sandbox.
 
 If sbx rejects nested mounts (`shared/` read-only with `shared/<name>/` read-write inside),

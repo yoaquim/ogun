@@ -143,10 +143,11 @@ Read the lock diff before committing: every new name in it is new code on your M
 ## Testing a branch in one terminal
 
 Leave the copy your shell's `og` runs from as it is; set up a second copy of og at the
-branch (a git worktree, or another clone) and run its setup:
+branch (a git worktree, or another clone) and run its setup with `OG_BIN` empty, so it
+leaves `~/.local/bin/og` pointing at your copy:
 
 ```bash
-<second copy>/setup.sh
+OG_BIN= <second copy>/setup.sh
 og() { <second copy>/.venv/bin/og "$@"; }      # this tab only
 ```
 
