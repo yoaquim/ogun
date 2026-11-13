@@ -48,6 +48,23 @@ def skills_dir() -> str:
     return str(Path(v).expanduser()) if v else ""
 
 
+def dangling(src: str) -> list[str]:
+    """The links under src (through linked folders too, each folder once) that point to
+    nothing, relative to src, as rsync sees them."""
+    out, seen = [], set()
+    for dp, dns, fns in os.walk(src, followlinks=True):
+        real = os.path.realpath(dp)
+        if real in seen:
+            dns[:] = []
+            continue
+        seen.add(real)
+        for n in dns + fns:
+            p = os.path.join(dp, n)
+            if os.path.islink(p) and not os.path.exists(p):
+                out.append(os.path.relpath(p, src))
+    return sorted(out)
+
+
 def skills() -> bool:
     """The skills folder (skills_dir) mirrored into the shared store every
     sandbox mounts; unset, none, said once. The store is ALWAYS left read-only:
@@ -70,8 +87,13 @@ def skills() -> bool:
         log.err(f"og: couldn't make the skills store at {log.path(store)}")
         return False
     # --copy-unsafe-links: a skill linked in from elsewhere arrives as its files, never a
-    # link to a Mac path no sandbox has
-    if (subprocess.run(["rsync", "-a", "--copy-unsafe-links", "--delete", f"{src}/", f"{store}/"]).returncode
+    # link to a Mac path no sandbox has. A link to nothing would fail the whole copy:
+    # said, and left out
+    skip = []
+    for rel in dangling(src):
+        log.warn(f"  {log.WARNING} {log.path(os.path.join(src, rel))} links to nothing; left out of the skills store", err=True)
+        skip += ["--exclude", "/" + re.sub(r"([*?\[\\])", r"\\\1", rel)]
+    if (subprocess.run(["rsync", "-a", "--copy-unsafe-links", *skip, "--delete", f"{src}/", f"{store}/"]).returncode
             or subprocess.run(["chmod", "-R", "a-w", str(store)]).returncode):
         log.err(f"og: couldn't mirror {log.path(src)} into sbx's skills store (above)")
         return False

@@ -77,3 +77,16 @@ def test_a_skill_linked_in_from_elsewhere_reaches_the_store_as_its_files(og, sto
     (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
     assert og("skills")[0] == 0
     assert not (store / "review").is_symlink() and (store / "review/SKILL.md").read_text() == "review\n"
+
+
+def test_a_link_to_nothing_is_said_and_left_out_and_the_rest_still_arrives(og, store, home):
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "elsewhere/review/notes[1].md").symlink_to(home / "nowhere")   # inside a linked skill, a name rsync reads as a pattern
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    (home / "agent-config/skills/gone").symlink_to(home / "nowhere")
+    code, out, err = og("skills")
+    assert code == 0 and (store / "review/SKILL.md").read_text() == "review\n" and (store / "outline/SKILL.md").is_file()
+    assert not os.path.lexists(store / "gone") and not os.path.lexists(store / "review/notes[1].md")
+    assert "~/agent-config/skills/gone links to nothing; left out of the skills store" in out + err
+    assert "~/agent-config/skills/review/notes[1].md links to nothing" in out + err
