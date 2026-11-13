@@ -53,8 +53,9 @@ cp "$here/settings.json" ~/.claude/settings.json
   same path works on both sides, and a leading `~/` in either setting is your Mac's home.
   Mounts are read-only and live: an edit on the Mac is seen inside at once, and copied into
   place on the next attach.
-- **A failure stops.** A provision command that exits non-zero stops the create or attach,
-  saying so: a sandbox never starts half set up.
+- **A failure stops a create.** A provision command that exits non-zero stops the create
+  (or `--sync`), saying so. On a plain attach it warns and the session still starts, maybe
+  without what it sets up; run `og <name> --sync` to set it up again.
 - **Tell the agent og's rules.** og says nothing to the agent itself; your `CLAUDE.md` is
   where it learns what to do when a request is blocked or a workflow push refused
   ([What a provision command should tell the agent](setup.md#what-a-provision-command-should-tell-the-agent)).
