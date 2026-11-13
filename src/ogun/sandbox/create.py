@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ogun.core import boxes, config, log, naming, sbx, settings
 from ogun.net import baseline, egress, pushrules
-from ogun.sandbox import appa, choose, envfile, facts, template
+from ogun.sandbox import appa, choose, envfile, facts, init, template
 
 # ── the create itself ──
 
@@ -48,6 +48,32 @@ def skills_dir() -> str:
     return str(Path(v).expanduser()) if v else ""
 
 
+def left_out(src: str) -> list[tuple[str, str]]:
+    """What the skills mirror can't copy, relative to src as rsync sees it, and why: a
+    link to nothing, and a link to a folder that holds it (a loop). Checked under every
+    name a folder is reached by, since rsync copies each."""
+    out = []
+
+    def walk(d: str, rel: str, above: frozenset) -> None:
+        try:
+            entries = sorted(os.scandir(d), key=lambda e: e.name)
+        except OSError:
+            return
+        for e in entries:
+            r = os.path.join(rel, e.name) if rel else e.name
+            if e.is_symlink() and not os.path.exists(e.path):
+                out.append((r, "links to nothing"))
+            elif e.is_dir():
+                real = os.path.realpath(e.path)
+                if real in above:
+                    out.append((r, "links to a folder that holds it"))
+                else:
+                    walk(e.path, r, above | {real})
+
+    walk(src, "", frozenset({os.path.realpath(src)}))
+    return sorted(out)
+
+
 def skills() -> bool:
     """The skills folder (skills_dir) mirrored into the shared store every
     sandbox mounts; unset, none, said once. The store is ALWAYS left read-only:
@@ -69,8 +95,18 @@ def skills() -> bool:
     except OSError:
         log.err(f"og: couldn't make the skills store at {log.path(store)}")
         return False
-    if (subprocess.run(["rsync", "-a", "--delete", f"{src}/", f"{store}/"]).returncode
-            or subprocess.run(["chmod", "-R", "a-w", str(store)]).returncode):
+    # --copy-links: every link arrives as what it points to, resolved where it is on the
+    # Mac (a skill linked in from elsewhere, its own ../ links), never a link to a path no
+    # sandbox has. One rsync can't copy would fail the whole mirror: said, and left out;
+    # --delete-excluded drops what an earlier mirror copied of it
+    skip = []
+    for rel, why in left_out(src):
+        log.warn(f"  {log.WARNING} {log.path(os.path.join(src, rel))} {why}; left out of the skills store", err=True)
+        skip += ["--exclude", "/" + re.sub(r"([*?\[\\])", r"\\\1", rel)]
+    synced = subprocess.run(["rsync", "-a", "--copy-links", *skip, "--delete", "--delete-excluded", f"{src}/",
+                             f"{store}/"]).returncode == 0
+    # locked again whatever the copy did: a failed one must not leave the store writable
+    if not (subprocess.run(["chmod", "-R", "a-w", str(store)]).returncode == 0 and synced):
         log.err(f"og: couldn't mirror {log.path(src)} into sbx's skills store (above)")
         return False
     n = sum(1 for x in store.iterdir() if x.is_dir() and not x.is_symlink())
@@ -203,10 +239,7 @@ def create(name: str, org: str, d: str, kind: str = "session", item: str = "", a
     rel = [x for x in registry.related(d) if x]
     _listed("related, mounted read-only:", rel)
     _listed("MCP servers (register with 'sbx mcp add' first):", mcp.servers(d))
-    # plugin marketplaces: mounted read-only unless another
-    # rule already mounts the path — the workspace itself, or a related checkout
-    mkt = [x for x in choose.marketplaces(d) if x and x != d and x not in rel]
-    _listed("plugin marketplaces, mounted read-only:", mkt)
+    mkt, links = mount_plan(d, rel, sshkd)
     img, decision = choose.choose_template(d)
     rc, v = recipe_appa(decision)
     if rc == 2:
@@ -233,8 +266,32 @@ def create(name: str, org: str, d: str, kind: str = "session", item: str = "", a
     # what was decided for it — template, mounts as this create wrote them (another
     # create from the same workspace may write over the file meanwhile), runtime
     # egress; a record that could not be written is warned, never fatal
-    facts.record(name, kind, d, decision, yaml, allow_runtime_egress(name, decision))
+    facts.record(name, kind, d, decision, yaml, allow_runtime_egress(name, decision), links)
     return finish(name, org, item, d, rel, given, appa_on)
+
+
+def mount_plan(d: str, rel: list[str], sshkd: str) -> tuple[list[str], list[tuple[str, str]]]:
+    """The plugin marketplaces to mount (real paths, read-only, none another rule already
+    mounts: the workspace, a related checkout), and each mount reached through a link
+    as (link, real path), which setup makes inside. A link in a mounted folder whose
+    target no mount covers is said, never mounted."""
+    from ogun.exchange import folders
+    named = [x for x in choose.marketplaces(d) if x]
+    mkt = [x for x in dict.fromkeys(init.real_path(m) for m in named) if x not in (d, init.real_path(d)) and x not in rel]
+    _listed("plugin marketplaces, mounted read-only:", mkt)
+    hosts = envfile.host_mounts(d, rel)
+    # every link whose target some mount covers, the workspace and related checkouts
+    # included: a mount skipped as already mounted still needs its own name inside
+    covered = [*mkt, *(r for _, r in hosts), d, init.real_path(d), *rel]
+    links = list(dict.fromkeys(p for p in [*(envfile.linked(a) for a, _ in envfile.host_named()),
+                                           *(envfile.linked(m) for m in named)] if p and p[1] in covered))
+    # a folder's link before any link below it: making the deeper one first would put a
+    # real folder where the shallower link goes
+    links.sort(key=lambda p: p[0].rstrip("/").count("/"))
+    envfile.say_outside_links([r for _, r in hosts] + mkt,
+                              [d, init.real_path(d), *rel, *(r for _, r in hosts), *mkt, sshkd,
+                               init.real_path(str(folders.exchange()))])
+    return mkt, links
 
 
 def finish(name: str, org: str, item: str, d: str, rel: list[str], given: list, appa_on: bool) -> bool:

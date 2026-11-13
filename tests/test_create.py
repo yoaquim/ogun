@@ -14,7 +14,7 @@ import pytest
 from conftest import use_profile, with_header
 from ogun.core import records, settings
 from ogun.exchange import folders
-from ogun.sandbox import choose, create, facts, init
+from ogun.sandbox import choose, create, envfile, facts, init
 
 SIGNED_OUT = ("error: failed to check if sandbox exists: lookup runtime: request failed: 401 Unauthorized: user is not "
               "authenticated to Docker: secret not found not signed in to Docker; remove provisioned secrets for this environment")
@@ -842,3 +842,70 @@ def test_a_create_asks_for_approvals_before_anything_is_made_then_gives_what_was
     ok, _, calls = made(recipes, stub, "home", name="ap-ask")
     assert ok and seen["made"] == [] and seen["box"] is None and [c for c in calls if c[:2] == ["env", "create"]]
     assert seen["given"] == ["the approved"]
+
+
+# ── mounts reached through a link: the real path mounted, the link recorded to make inside ──
+
+@pytest.fixture
+def linked_clone(recipes):
+    real = recipes / "elsewhere/plugins"
+    (real / ".claude-plugin").mkdir(parents=True)
+    (real / ".claude-plugin/marketplace.json").write_text('{"name":"initech-kit"}')
+    (recipes / "Projects/initech").mkdir(parents=True, exist_ok=True)
+    (recipes / "Projects/initech/plugins").symlink_to(real)
+    return real
+
+
+def test_a_marketplace_whose_path_is_a_link_is_mounted_at_its_real_path(recipes, linked_clone, monkeypatch):
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "")
+    use_profile(recipes, "work")
+    mkt, links = create.mount_plan(str(recipes / "Projects/personal/plain"), [], "")
+    assert mkt == [str(linked_clone)]
+    assert links == [(str(recipes / "Projects/initech/plugins"), str(linked_clone))]
+
+
+def test_a_create_records_each_link_its_mounts_were_named_by(recipes, stub, monkeypatch):
+    (recipes / "dotfiles/claude").mkdir(parents=True)
+    (recipes / "sandbox-setup").symlink_to(recipes / "dotfiles/claude")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/sandbox-setup")
+    ok, _, _ = made(recipes, stub, "home", name="rec-links")
+    assert ok and rec("rec-links")["links"] == [[str(recipes / "sandbox-setup"), str(recipes / "dotfiles/claude")]]
+    assert {"path": str(recipes / "dotfiles/claude"), "read_only": True} in rec("rec-links")["mounts"]
+
+
+def test_a_create_says_a_link_no_mount_covers_and_mounts_nothing_more(recipes, stub, monkeypatch, capfd):
+    (recipes / "dotfiles/claude").mkdir(parents=True)
+    (recipes / "notes").mkdir()
+    (recipes / "notes/agent.md").write_text("x")
+    (recipes / "dotfiles/claude/CLAUDE.md").symlink_to(recipes / "notes/agent.md")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/dotfiles/claude")
+    ok, _, _ = made(recipes, stub, "home", name="rec-outside")
+    assert ok and "add ~/notes to host_ro_mounts" in "".join(capfd.readouterr())
+    assert not any("notes" in m["path"] for m in rec("rec-outside")["mounts"])
+
+
+def test_a_linked_mount_another_rule_already_mounts_keeps_its_link(recipes, monkeypatch):
+    # the workspace itself, named through a link: mounted once, as the workspace, and the link still made
+    d = recipes / "Projects/personal/plain"
+    d.mkdir(parents=True, exist_ok=True)
+    (recipes / "work-alias").symlink_to(d)
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/work-alias")
+    use_profile(recipes, "home")
+    _, links = create.mount_plan(str(d), [], "")
+    assert links == [(str(recipes / "work-alias"), str(d))] and envfile.host_mounts(str(d)) == []
+
+
+def test_a_linked_marketplace_inside_a_related_checkout_keeps_its_link(recipes, linked_clone, monkeypatch):
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "")
+    use_profile(recipes, "work")
+    mkt, links = create.mount_plan(str(recipes / "Projects/personal/plain"), [str(linked_clone)], "")
+    assert mkt == [] and links == [(str(recipes / "Projects/initech/plugins"), str(linked_clone))]
+
+
+def test_a_linked_folders_link_comes_before_one_below_it_whatever_the_settings_order(recipes, monkeypatch):
+    (recipes / "dotfiles/claude/skills").mkdir(parents=True)
+    (recipes / "sandbox-setup").symlink_to(recipes / "dotfiles/claude")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/sandbox-setup/skills:~/sandbox-setup")
+    use_profile(recipes, "home")
+    _, links = create.mount_plan(str(recipes / "Projects/personal/plain"), [], "")
+    assert [a for a, _ in links] == [str(recipes / "sandbox-setup"), str(recipes / "sandbox-setup/skills")]

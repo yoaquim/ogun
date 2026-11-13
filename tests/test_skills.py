@@ -69,3 +69,74 @@ def test_og_skills_takes_no_arguments(og, store, args):
 def test_help_is_its_usage_and_mirrors_nothing(og, store):
     code, out, _ = og("skills", "--help")
     assert code == 0 and out.startswith("usage: og skills") and not store.exists()
+
+
+def test_a_skill_linked_in_from_elsewhere_reaches_the_store_as_its_files(og, store, home):
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    assert og("skills")[0] == 0
+    assert not (store / "review").is_symlink() and (store / "review/SKILL.md").read_text() == "review\n"
+
+
+def test_a_link_to_nothing_is_said_and_left_out_and_the_rest_still_arrives(og, store, home):
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "elsewhere/review/notes[1].md").symlink_to(home / "nowhere")   # inside a linked skill, a name rsync reads as a pattern
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    (home / "agent-config/skills/gone").symlink_to(home / "nowhere")
+    code, out, err = og("skills")
+    assert code == 0 and (store / "review/SKILL.md").read_text() == "review\n" and (store / "outline/SKILL.md").is_file()
+    assert not os.path.lexists(store / "gone") and not os.path.lexists(store / "review/notes[1].md")
+    assert "~/agent-config/skills/gone links to nothing; left out of the skills store" in out + err
+    assert "~/agent-config/skills/review/notes[1].md links to nothing" in out + err
+
+
+def test_a_linked_skill_whose_target_goes_leaves_the_store_too(og, store, home):
+    import shutil
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    assert og("skills")[0] == 0 and (store / "review/SKILL.md").is_file()
+    shutil.rmtree(home / "elsewhere/review")
+    assert og("skills")[0] == 0 and not os.path.lexists(store / "review") and (store / "outline/SKILL.md").is_file()
+
+
+def test_a_folder_two_skills_link_to_is_checked_under_each_name(og, store, home):
+    (home / "elsewhere/shared").mkdir(parents=True)
+    (home / "elsewhere/shared/SKILL.md").write_text("shared\n")
+    (home / "elsewhere/shared/bad").symlink_to(home / "missing")
+    for n in ("a", "b"):
+        (home / f"agent-config/skills/{n}").symlink_to(home / "elsewhere/shared")
+    code, out, err = og("skills")
+    assert code == 0 and (store / "a/SKILL.md").is_file() and (store / "b/SKILL.md").is_file()
+    assert "skills/a/bad links to nothing" in out + err and "skills/b/bad links to nothing" in out + err
+
+
+def test_a_link_to_a_folder_that_holds_it_is_said_and_left_out_never_copied_round(og, store, home):
+    (home / "agent-config/skills/outline/loop").symlink_to(home / "agent-config/skills")
+    code, out, err = og("skills")
+    assert code == 0 and (store / "outline/SKILL.md").is_file() and not os.path.lexists(store / "outline/loop")
+    assert "~/agent-config/skills/outline/loop links to a folder that holds it; left out" in out + err
+
+
+def test_a_linked_skills_own_relative_links_resolve_where_it_really_is(og, store, home):
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/support").mkdir()
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "elsewhere/support/helper.sh").write_text("echo hi\n")
+    (home / "elsewhere/review/support").symlink_to("../support")
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    assert og("skills")[0] == 0
+    assert not (store / "review/support").is_symlink() and (store / "review/support/helper.sh").read_text() == "echo hi\n"
+
+
+def test_a_mirror_that_fails_still_leaves_the_store_read_only(og, store, home, monkeypatch):
+    og("skills")
+    real = __import__("subprocess").run
+
+    def failing_rsync(cmd, *a, **k):
+        return real(["false"], *a, **k) if cmd[0] == "rsync" else real(cmd, *a, **k)
+    monkeypatch.setattr("ogun.sandbox.create.subprocess.run", failing_rsync)
+    code, out, err = og("skills")
+    assert code == 1 and "couldn't mirror" in out + err and writable(store) == []

@@ -24,6 +24,68 @@ def host_ro_mounts() -> list[str]:
     return [m for m in settings.get("host_ro_mounts").split(":") if m]
 
 
+def host_named() -> list[tuple[str, str]]:
+    """Each folder host_ro_mounts names that's there, as (its path, its real path):
+    sbx mounts the real one. ~ is expanded here: sbx expands nothing but its own
+    ${{ env.* }} references."""
+    return [(os.path.abspath(hm), init.real_path(hm)) for pat in host_ro_mounts()
+            for hm in (sorted(glob.glob(os.path.expanduser(pat))) if pat else []) if os.path.isdir(hm)]
+
+
+def host_mounts(d: str, related: list[str] = ()) -> list[tuple[str, str]]:
+    """host_named(), less those another rule already mounts (the workspace, a related
+    checkout): sbx rejects one path mounted twice ("conflicting read-only settings") at
+    create time."""
+    dr = init.real_path(d)
+    return [(a, r) for a, r in host_named() if r not in (d, dr) and r not in related]
+
+
+def linked(p: str) -> tuple[str, str] | None:
+    """(p, its real path) when a link lies on its way, else None: sbx mounts the real
+    path, so og makes the same link inside (sandbox-scripts/mount-links.sh) and p
+    works there too."""
+    a, r = os.path.abspath(p), init.real_path(p)
+    return (a, r) if a != r else None
+
+
+def _under(p: str, roots: list[str]) -> bool:
+    return any(p == r or p.startswith(r.rstrip("/") + "/") for r in roots if r)
+
+
+def outside_links(roots: list[str], mounted: list[str], cap: int = 5000) -> tuple[list[tuple[str, str]], bool]:
+    """The links inside roots whose target is there on the Mac but under no mounted
+    folder: inside the sandbox they point at nothing. Never mounted for you (a link
+    to ~/.ssh would hand every sandbox your keys); said, so you can name the folder
+    yourself. True with them when it stopped looking after cap entries."""
+    found, seen = [], 0
+    for root in roots:
+        for dp, dns, fns in os.walk(root):   # never follows a link: one to a folder is listed, not entered
+            dns[:] = [x for x in dns if x != ".git"]
+            for n in dns + fns:
+                seen += 1
+                if seen > cap:
+                    return found, True
+                p = os.path.join(dp, n)
+                if os.path.islink(p) and os.path.exists(p):
+                    t = init.real_path(p)
+                    if not _under(t, mounted):
+                        found.append((p, t))
+    return found, False
+
+
+def say_outside_links(roots: list[str], mounted: list[str]) -> None:
+    """outside_links(), a warning each (the first five), with the entry that would cover it."""
+    found, cut = outside_links(roots, mounted)
+    for link, t in found[:5]:
+        folder = t if os.path.isdir(t) else os.path.dirname(t)
+        log.warn(f"  {log.WARNING} {log.path(link)} links to {log.path(t)}, which this sandbox doesn't mount; "
+                 f"to use it, add {log.path(folder)} to host_ro_mounts", err=True)
+    if len(found) > 5:
+        log.note(f"and {len(found) - 5} more such links", err=True)
+    if cut:
+        log.note("stopped looking for links outside the mounts after 5000 entries", err=True)
+
+
 def git_excludes(d: str) -> None:
     """og's own files out of git: .sbxenv.yaml and .inbox/ in the repo's
     info/exclude, wherever git keeps it: a linked worktree's .git is a file, and a
@@ -61,7 +123,6 @@ def env_yaml(name: str, d: str, box: Path, related: list[str] = (), marketplaces
     # The project itself is the read-write workspace (a private clone); every other
     # folder is read-only, a host folder only when
     # host_ro_mounts names it
-    dr = init.real_path(d)
     y = ['schemaVersion: "1"', f"name: {name}", "agent: claude", "workspace:", f'  path: "{_yamlq(d)}"', "  clone: true",
          "additionalWorkspaces:"]
     ro = "    readOnly: true"
@@ -79,19 +140,10 @@ def env_yaml(name: str, d: str, box: Path, related: list[str] = (), marketplaces
           # this sandbox's PRIVATE inbox: host-written, read-only inside — files for
           # just this sandbox (og give <name>), so the broadcast inbox/ stays small
           f'  - path: "{_yamlq(str(box))}/in"', ro]
-    # host reference mounts (host_ro_mounts, none by default): read-only,
-    # skipped when absent — and skipped when another rule already mounts the path
-    # (the workspace, a related checkout): sbx rejects one path mounted twice
-    # ("conflicting read-only settings") at create time. Written out in full: sbx
-    # expands nothing but its own ${{ env.* }} references, so ~ is expanded here
-    for pat in host_ro_mounts():
-        for hm in sorted(glob.glob(os.path.expanduser(pat))) if pat else []:
-            if not os.path.isdir(hm):
-                continue
-            hmr = init.real_path(hm)
-            if hmr in (d, dr) or hmr in related:
-                continue
-            y += [f'  - path: "{_yamlq(hmr)}"', ro]
+    # host reference mounts (host_ro_mounts, none by default): read-only, at their
+    # real paths, skipped when absent or already mounted
+    for _, hmr in host_mounts(d, related):
+        y += [f'  - path: "{_yamlq(hmr)}"', ro]
     if image:
         y += ["sandboxOptions:", f"  template: {image}"]
     # Gateway servers (an issue tracker's, say) are not named here: .sbxenv.yaml wants a

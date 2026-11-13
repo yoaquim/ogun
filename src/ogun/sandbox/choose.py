@@ -108,7 +108,8 @@ def marketplaces(d: str) -> list[str]:
     """The plugin marketplaces to mount read-only, a host path each: those this
     Mac's og profile asks for (marketplaces.json in og's config folder), and those the repo's
     entry asks for behind the owner gate. A clone that isn't there is skipped,
-    said, never a failed create. Mounted, never baked in: a template never needs
+    said, never a failed create. Each as named: a link on its way is the create's to
+    resolve (envfile.linked). Mounted, never baked in: a template never needs
     access to the plugin's repo. Its path in marketplaces.json is ~/-relative, so
     the file works under any home folder."""
     defs = (config.read_json("marketplaces.json") or {}).get("marketplaces", {})
@@ -145,7 +146,7 @@ def marketplaces(d: str) -> list[str]:
             skipped(f"marketplace '{name}': path must be ~/<dir> (no . or .. segments), got {p!r}; skipped")
             continue
         host = os.path.join(str(Path.home()), p[2:])
-        if os.path.islink(host) or not os.path.isdir(host):
+        if not os.path.isdir(host):   # a link is followed: mounted at its real path, the link made inside
             skipped(f"marketplace '{name}' ({why}): no clone at {p} — not mounted in this sandbox "
                   "(clone it there, then recreate)")
             continue

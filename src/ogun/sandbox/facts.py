@@ -32,12 +32,14 @@ def mounts(yaml: str) -> list[dict]:
     return out
 
 
-def record(name: str, kind: str, ws: str, decision: dict | None, yaml: str, egress: list[str]) -> bool:
+def record(name: str, kind: str, ws: str, decision: dict | None, yaml: str, egress: list[str],
+           links: list[tuple[str, str]] = ()) -> bool:
     """The sandbox's record: its template, mounts and runtime egress, as JSON
     the secret grants add to later, written whole. A yaml that names another
     sandbox (another create wrote over it) is no record of this one. The
     .sbxenv.yaml can't serve as the record: the next create from the same folder
-    writes over it, even while this one's `sbx env create` runs."""
+    writes over it, even while this one's `sbx env create` runs. links: (link, real
+    path) for each mount reached through a link, made inside at every setup."""
     if not naming.name_ok(name):   # the name becomes a path
         return False
     if not yaml:
@@ -53,6 +55,7 @@ def record(name: str, kind: str, ws: str, decision: dict | None, yaml: str, egre
         rec = {"version": 1, "sandbox": name, "kind": kind,
                "created": datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
                "workspace": ws, "template": decision, "mounts": mounts(yaml), "egress": [x for x in egress if x],
+               "links": [[a, r] for a, r in links],
                "secrets": []}   # filled by the secret grants once applied
         files.write_json(out, rec, private=True)
     except OSError:
