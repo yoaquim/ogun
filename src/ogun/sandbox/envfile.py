@@ -24,22 +24,20 @@ def host_ro_mounts() -> list[str]:
     return [m for m in settings.get("host_ro_mounts").split(":") if m]
 
 
-def host_mounts(d: str, related: list[str] = ()) -> list[tuple[str, str]]:
+def host_named() -> list[tuple[str, str]]:
     """Each folder host_ro_mounts names that's there, as (its path, its real path):
-    sbx mounts the real one. Skipped when another rule already mounts it (the
-    workspace, a related checkout): sbx rejects one path mounted twice ("conflicting
-    read-only settings") at create time. ~ is expanded here: sbx expands nothing but
-    its own ${{ env.* }} references."""
-    dr, out = init.real_path(d), []
-    for pat in host_ro_mounts():
-        for hm in sorted(glob.glob(os.path.expanduser(pat))) if pat else []:
-            if not os.path.isdir(hm):
-                continue
-            hmr = init.real_path(hm)
-            if hmr in (d, dr) or hmr in related:
-                continue
-            out.append((os.path.abspath(hm), hmr))
-    return out
+    sbx mounts the real one. ~ is expanded here: sbx expands nothing but its own
+    ${{ env.* }} references."""
+    return [(os.path.abspath(hm), init.real_path(hm)) for pat in host_ro_mounts()
+            for hm in (sorted(glob.glob(os.path.expanduser(pat))) if pat else []) if os.path.isdir(hm)]
+
+
+def host_mounts(d: str, related: list[str] = ()) -> list[tuple[str, str]]:
+    """host_named(), less those another rule already mounts (the workspace, a related
+    checkout): sbx rejects one path mounted twice ("conflicting read-only settings") at
+    create time."""
+    dr = init.real_path(d)
+    return [(a, r) for a, r in host_named() if r not in (d, dr) and r not in related]
 
 
 def linked(p: str) -> tuple[str, str] | None:

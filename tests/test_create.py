@@ -14,7 +14,7 @@ import pytest
 from conftest import use_profile, with_header
 from ogun.core import records, settings
 from ogun.exchange import folders
-from ogun.sandbox import choose, create, facts, init
+from ogun.sandbox import choose, create, envfile, facts, init
 
 SIGNED_OUT = ("error: failed to check if sandbox exists: lookup runtime: request failed: 401 Unauthorized: user is not "
               "authenticated to Docker: secret not found not signed in to Docker; remove provisioned secrets for this environment")
@@ -882,3 +882,21 @@ def test_a_create_says_a_link_no_mount_covers_and_mounts_nothing_more(recipes, s
     ok, _, _ = made(recipes, stub, "home", name="rec-outside")
     assert ok and "add ~/notes to host_ro_mounts" in "".join(capfd.readouterr())
     assert not any("notes" in m["path"] for m in rec("rec-outside")["mounts"])
+
+
+def test_a_linked_mount_another_rule_already_mounts_keeps_its_link(recipes, monkeypatch):
+    # the workspace itself, named through a link: mounted once, as the workspace, and the link still made
+    d = recipes / "Projects/personal/plain"
+    d.mkdir(parents=True, exist_ok=True)
+    (recipes / "work-alias").symlink_to(d)
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/work-alias")
+    use_profile(recipes, "home")
+    _, links = create.mount_plan(str(d), [], "")
+    assert links == [(str(recipes / "work-alias"), str(d))] and envfile.host_mounts(str(d)) == []
+
+
+def test_a_linked_marketplace_inside_a_related_checkout_keeps_its_link(recipes, linked_clone, monkeypatch):
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "")
+    use_profile(recipes, "work")
+    mkt, links = create.mount_plan(str(recipes / "Projects/personal/plain"), [str(linked_clone)], "")
+    assert mkt == [] and links == [(str(recipes / "Projects/initech/plugins"), str(linked_clone))]

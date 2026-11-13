@@ -246,8 +246,11 @@ def mount_plan(d: str, rel: list[str], sshkd: str) -> tuple[list[str], list[tupl
     mkt = [x for x in dict.fromkeys(init.real_path(m) for m in named) if x not in (d, init.real_path(d)) and x not in rel]
     _listed("plugin marketplaces, mounted read-only:", mkt)
     hosts = envfile.host_mounts(d, rel)
-    links = [p for p in [*(envfile.linked(a) for a, _ in hosts), *(envfile.linked(m) for m in named)]
-             if p and p[1] in mkt + [r for _, r in hosts]]
+    # every link whose target some mount covers, the workspace and related checkouts
+    # included: a mount skipped as already mounted still needs its own name inside
+    covered = [*mkt, *(r for _, r in hosts), d, init.real_path(d), *rel]
+    links = list(dict.fromkeys(p for p in [*(envfile.linked(a) for a, _ in envfile.host_named()),
+                                           *(envfile.linked(m) for m in named)] if p and p[1] in covered))
     envfile.say_outside_links([r for _, r in hosts] + mkt,
                               [d, init.real_path(d), *rel, *(r for _, r in hosts), *mkt, sshkd,
                                init.real_path(str(folders.exchange()))])
