@@ -12,7 +12,7 @@ sandboxes, in most cases without the sandbox ever seeing the value.
 | Secret grants (`registry.json` `secrets`) | applied per sandbox at create, through `ogun pass`, once approved on this Mac | **no** |
 | Keys used locally (decryption, signing) | `og pass <name> <ENV_VAR> --expose --item …` (or `--paste`); the real value goes into its env | yes, deliberately. Scope the key; it dies with the sandbox |
 | Files a task needs | `ogun give <name> <file>` (its private `in/`), `sbx cp`, or `<project>/.inbox/`, which the sandbox sees at `/run/sandbox/source/.inbox/` | yes. Delete host copies afterwards |
-| AWS | an SSO session inside the sandbox (`aws sso login`), set up by you ([config](config.md#example-aws)) | yes, short-lived |
+| AWS | an SSO session inside the sandbox (`aws sso login`), set up by you ([AWS](customize.md#aws)) | yes, short-lived |
 | Anything pasted into chat | — | **never do this.** It lands in the transcript on disk |
 
 ## 1Password
@@ -195,7 +195,7 @@ lists them with the `sbx secret rm` command to run.
 
 The proxy can't inject AWS credentials, because requests are signed rather than carrying a
 token. So AWS access lives inside each sandbox as a short-lived SSO session, which og leaves
-to you: [config: AWS](config.md#example-aws) shows the setup.
+to you: [Make sandboxes yours: AWS](customize.md#aws) shows the setup.
 
 ## SSH from a sandbox
 

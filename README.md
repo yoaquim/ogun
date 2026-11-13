@@ -102,9 +102,17 @@ can't land somewhere public in a way the network can't tell from normal work.
 
 ## Make it yours
 
-og sets up only what it needs. Mount folders, run your own setup script in every sandbox, add
-apt tools: og runs what you name without knowing what's in it. Settings, repos and templates
-live in `~/.config/ogun/` ([customizing](docs/config.md#make-sandboxes-your-own)).
+og sets up only what it needs; the rest you add, and og runs or mounts it without knowing
+what's in it:
+
+| You want | Use |
+|---|---|
+| your `CLAUDE.md`, settings and hooks | a mounted setup folder and a `provision` script |
+| your skills, plugins, MCP servers | `skills_dir`, `marketplaces.json`, the registry's `mcp` |
+| packages and toolchains | `apt_tools`, or a template baked into an image |
+| folders and other repos, to read | `host_ro_mounts`, `og project add` |
+
+Step by step, with an example setup script: [Make sandboxes yours](docs/customize.md).
 
 ## Install
 
@@ -117,4 +125,5 @@ with no configuration ([setup](docs/setup.md)).
 [Overview](docs/README.md) · [Setup](docs/setup.md) · [Sandboxes](docs/sandboxes.md) ·
 [Network](docs/network.md) · [Secrets](docs/secrets.md) · [Templates](docs/templates.md) ·
 [File exchange](docs/exchange.md) · [OpenAPPA](docs/appa.md) · [Config](docs/config.md) ·
+[Customizing](docs/customize.md) ·
 [Testing](docs/testing.md)

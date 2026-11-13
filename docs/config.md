@@ -67,52 +67,5 @@ The settings (each also an environment variable; defaults and details in
 
 ## Make sandboxes your own
 
-og sets up only what it needs itself. Everything else a sandbox should have, you add with
-these, and og runs or mounts what they name without knowing what's in it:
-
-| To | Use |
-|---|---|
-| give every sandbox host folders, read-only | `host_ro_mounts`: mounted at their own paths (a Mac path inside is the same path), live |
-| give one repo's sandbox other repos, read-only | that repo's `repos.read` in `registry.json` ([sandboxes](sandboxes.md)) |
-| run your own setup in every sandbox | `provision`: a command run inside at create and on every attach, so it must be safe to run again |
-| install extra apt packages | `apt_tools` |
-| bake heavier tools into an image | a recipe in `templates/` ([templates](templates.md)) |
-
-The setup command runs inside the sandbox, so the script it names has to be there: keep it
-in a folder `host_ro_mounts` mounts. A leading `~/` in either is your Mac's home:
-
-```toml
-host_ro_mounts = "~/sandbox-setup"
-provision = "~/sandbox-setup/provision.sh"
-```
-
-### Example: AWS
-
-og doesn't set up AWS. The proxy can't inject AWS credentials (requests are signed rather
-than carrying a token), so access lives inside each sandbox as a short-lived SSO session:
-
-- **The CLI:** install it from your setup script, or in a template's recipe so it's baked in.
-- **Profiles:** mount the folder holding your AWS config and point `AWS_CONFIG_FILE` at it
-  from your setup script, or have the script write one. A config holds identifiers only;
-  no keys or sessions leave the Mac.
-- **Login:** run `aws sso login --profile <p> --use-device-code` inside the sandbox and
-  approve the code in the Mac's browser. The sandbox asks you to approve the login's hosts
-  the first time, as it does any host outside the baseline
-  ([network](network.md#what-the-baseline-leaves-out)).
-
-### Example: the Mac's fonts
-
-For a sandbox to render with the Mac's fonts (a browser, a PDF tool), mount the font
-folders and point fontconfig at them from your setup script:
-
-```toml
-host_ro_mounts = "~/sandbox-setup:~/Library/Fonts:/Library/Fonts"
-```
-
-```bash
-# in provision.sh: the mounts keep their Mac paths
-mkdir -p ~/.config/fontconfig
-{ echo '<?xml version="1.0"?>'; echo '<fontconfig>'
-  for d in /Users/*/Library/Fonts /Library/Fonts; do [ -d "$d" ] && echo "  <dir>$d</dir>"; done
-  echo '</fontconfig>'; } > ~/.config/fontconfig/fonts.conf
-```
+Your Claude setup, skills, plugins, MCP servers, packages, templates and mounts, step by
+step: [Make sandboxes yours](customize.md).

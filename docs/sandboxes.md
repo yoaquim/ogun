@@ -99,7 +99,7 @@ restart stops the relay until the next attach, which starts it again: `og attach
 | Mount | Access |
 |---|---|
 | the repo | read-write (a clone; the host checkout is at `/run/sandbox/source`) |
-| host folders `host_ro_mounts` names (none by default) | read-only, live, at their own paths ([make sandboxes your own](config.md#make-sandboxes-your-own)) |
+| host folders `host_ro_mounts` names (none by default) | read-only, live, at their own paths ([make sandboxes yours](customize.md#files-and-repos)) |
 | related repos from the registry | read-only |
 | the file exchange | per path, see [Exchange](exchange.md) |
 | `~/.ssh/sandbox`, when it exists | read-only |
