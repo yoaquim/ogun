@@ -90,3 +90,31 @@ def test_a_link_to_nothing_is_said_and_left_out_and_the_rest_still_arrives(og, s
     assert not os.path.lexists(store / "gone") and not os.path.lexists(store / "review/notes[1].md")
     assert "~/agent-config/skills/gone links to nothing; left out of the skills store" in out + err
     assert "~/agent-config/skills/review/notes[1].md links to nothing" in out + err
+
+
+def test_a_linked_skill_whose_target_goes_leaves_the_store_too(og, store, home):
+    import shutil
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    assert og("skills")[0] == 0 and (store / "review/SKILL.md").is_file()
+    shutil.rmtree(home / "elsewhere/review")
+    assert og("skills")[0] == 0 and not os.path.lexists(store / "review") and (store / "outline/SKILL.md").is_file()
+
+
+def test_a_folder_two_skills_link_to_is_checked_under_each_name(og, store, home):
+    (home / "elsewhere/shared").mkdir(parents=True)
+    (home / "elsewhere/shared/SKILL.md").write_text("shared\n")
+    (home / "elsewhere/shared/bad").symlink_to(home / "missing")
+    for n in ("a", "b"):
+        (home / f"agent-config/skills/{n}").symlink_to(home / "elsewhere/shared")
+    code, out, err = og("skills")
+    assert code == 0 and (store / "a/SKILL.md").is_file() and (store / "b/SKILL.md").is_file()
+    assert "skills/a/bad links to nothing" in out + err and "skills/b/bad links to nothing" in out + err
+
+
+def test_a_linked_folder_that_holds_itself_is_walked_once(store, home):
+    from ogun.sandbox import create
+    (home / "agent-config/skills/outline/loop").symlink_to(home / "agent-config/skills")
+    (home / "agent-config/skills/outline/bad").symlink_to(home / "missing")
+    assert create.dangling(str(home / "agent-config/skills")) == ["outline/bad"]
