@@ -285,6 +285,9 @@ def mount_plan(d: str, rel: list[str], sshkd: str) -> tuple[list[str], list[tupl
     covered = [*mkt, *(r for _, r in hosts), d, init.real_path(d), *rel]
     links = list(dict.fromkeys(p for p in [*(envfile.linked(a) for a, _ in envfile.host_named()),
                                            *(envfile.linked(m) for m in named)] if p and p[1] in covered))
+    # a folder's link before any link below it: making the deeper one first would put a
+    # real folder where the shallower link goes
+    links.sort(key=lambda p: p[0].rstrip("/").count("/"))
     envfile.say_outside_links([r for _, r in hosts] + mkt,
                               [d, init.real_path(d), *rel, *(r for _, r in hosts), *mkt, sshkd,
                                init.real_path(str(folders.exchange()))])

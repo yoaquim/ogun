@@ -900,3 +900,12 @@ def test_a_linked_marketplace_inside_a_related_checkout_keeps_its_link(recipes, 
     use_profile(recipes, "work")
     mkt, links = create.mount_plan(str(recipes / "Projects/personal/plain"), [str(linked_clone)], "")
     assert mkt == [] and links == [(str(recipes / "Projects/initech/plugins"), str(linked_clone))]
+
+
+def test_a_linked_folders_link_comes_before_one_below_it_whatever_the_settings_order(recipes, monkeypatch):
+    (recipes / "dotfiles/claude/skills").mkdir(parents=True)
+    (recipes / "sandbox-setup").symlink_to(recipes / "dotfiles/claude")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/sandbox-setup/skills:~/sandbox-setup")
+    use_profile(recipes, "home")
+    _, links = create.mount_plan(str(recipes / "Projects/personal/plain"), [], "")
+    assert [a for a, _ in links] == [str(recipes / "sandbox-setup"), str(recipes / "sandbox-setup/skills")]

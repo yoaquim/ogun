@@ -542,3 +542,11 @@ def test_the_script_never_replaces_a_real_folder_and_says_so(tmp_path):
 def test_the_script_refuses_a_path_that_isnt_full(tmp_path):
     p = links_script("relative/link", str(tmp_path))
     assert p.returncode == 1 and "not full paths" in p.stdout and not os.path.lexists("relative/link")
+
+
+def test_the_script_given_a_folder_then_one_below_it_makes_both_reachable(tmp_path):
+    (tmp_path / "real/skills").mkdir(parents=True)
+    (tmp_path / "real/provision.sh").write_text("x")
+    home = tmp_path / "home"
+    p = links_script(str(home / "setup"), str(tmp_path / "real"), str(home / "setup/skills"), str(tmp_path / "real/skills"))
+    assert p.returncode == 0 and (home / "setup").is_symlink() and (home / "setup/provision.sh").read_text() == "x"
