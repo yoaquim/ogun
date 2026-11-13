@@ -6,7 +6,7 @@
 
 [![test](https://github.com/yoaquim/ogun/actions/workflows/test.yml/badge.svg)](https://github.com/yoaquim/ogun/actions/workflows/test.yml)
 
-[Quick start](#quick-start) · [Install](#install) · [Docs](docs/README.md) · [MIT license](LICENSE)
+[What it assumes](#what-og-assumes) · [Quick start](#quick-start) · [Secure by default](#secure-by-default) · [Install](#install) · [Docs](docs/README.md) · [MIT license](LICENSE)
 
 </div>
 
@@ -17,6 +17,26 @@
 code, its token, its network, its files.
 
 <img src="docs/overview.svg" alt="You run og in your repo. og, on the Mac, takes the owner's GitHub token from 1Password, then creates the repo's sandbox and wires up its token, network rules and mounts. The sandbox runs Claude Code on its own clone and trades files with the Mac through the file exchange." width="100%">
+
+## What og assumes
+
+og is built around a few tools, and works only with them:
+
+1. **A Mac with Docker Sandboxes.** Each sandbox is a VM that Docker Sandboxes (`sbx`) runs on
+   your Mac, mounting the Mac's own folders. og doesn't run on Linux or Windows, and doesn't
+   use plain Docker or devcontainers.
+2. **Claude Code.** Every sandbox runs Claude Code; there's no choice of agent.
+3. **GitHub, with one token per owner.** Each owner (you, or an org) gets a fine-grained
+   token that lasts 60 days by default; og warns before it expires, and `og token` makes the
+   next one. An org must allow fine-grained tokens. GitLab and Bitbucket aren't supported. The token can't change
+   workflow files, so a change under `.github/workflows/` is pushed from your Mac, with
+   `og ship`.
+4. **1Password.** Tokens, and any secret you give a sandbox, are read from a 1Password vault
+   with its CLI (`op`). There's no other secret store.
+5. **Repos grouped by owner.** og picks a repo's token by the folder it's in:
+   `~/Projects/acme/shop` gets acme's. Other folders, or a folder whose repos all belong to
+   one owner, are a setting away (`projects`), and `og --org` overrides it for one run
+   ([settings](docs/appendix/flags-and-env.md#settings)).
 
 ## Quick start
 
@@ -41,6 +61,26 @@ and `og rm` refuses while unpushed or uncommitted work would be lost.
 | `og sh shop` | a shell inside |
 | `og ls` | every sandbox and its status |
 | `og stop shop` · `og rm shop` | stop it, or remove it |
+
+## Secure by default
+
+The agent is treated as something that could be tricked. So by default:
+
+- **The network is closed.** A sandbox reaches only a short list of hosts, and package
+  registries only to download. Anything else asks you first, for that sandbox alone.
+- **It works on its own copy.** The sandbox clones your repo; its edits never touch your
+  checkout, and its work comes back through git.
+- **Secrets stay on the Mac.** A sandbox holds placeholders; the real value is swapped in only
+  on requests to the host it's for. Putting one inside is something you ask for (`--expose`).
+- **Pushes are limited.** A sandbox pushes only to its own repo and the ones you list, never
+  to workflow files.
+- **No SSH agent.** Your keys aren't reachable from inside; GitHub remotes use HTTPS.
+- **Files move through one folder.** Apart from its folder in the file exchange, what a
+  sandbox sees of your Mac is read-only, and every file it hands back is checked before it
+  reaches you.
+- **og is pinned.** It installs from pinned, checksummed versions and never updates itself.
+
+The sections below show how each works.
 
 ## Network
 
