@@ -31,7 +31,8 @@ token items: [Setting up og](setup.md).
   suite and ruff; one that can't run (og's Python not built) is a skip, never a pass. Among
   them, `copy.test.sh` copies the repo to a folder with nothing beside it, runs setup and
   this runner there, and og's core commands with an empty config folder: anything in og that
-  reaches outside its folder fails it.
+  reaches outside its folder fails it. The container, CI and the end-to-end test on a Mac:
+  [Testing og](testing.md).
 
 `-v` before a command (or anywhere in its arguments) shows each `sbx` command Ogun runs and
 how it ended; `-vv` adds what `sbx` printed. On a terminal the output is colored; piped
@@ -148,3 +149,4 @@ A **GitHub token rotation** isn't immediate either. See
 - [og's config folder](config.md): your own files, apart from og's
 - [Appendix: flags and environment](appendix/flags-and-env.md)
 - [Appendix: ogun's Python](appendix/ogun-python.md)
+- [Testing og](testing.md): the suite, the container, CI, and the end-to-end test on a Mac
