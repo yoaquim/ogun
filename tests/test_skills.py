@@ -69,3 +69,11 @@ def test_og_skills_takes_no_arguments(og, store, args):
 def test_help_is_its_usage_and_mirrors_nothing(og, store):
     code, out, _ = og("skills", "--help")
     assert code == 0 and out.startswith("usage: og skills") and not store.exists()
+
+
+def test_a_skill_linked_in_from_elsewhere_reaches_the_store_as_its_files(og, store, home):
+    (home / "elsewhere/review").mkdir(parents=True)
+    (home / "elsewhere/review/SKILL.md").write_text("review\n")
+    (home / "agent-config/skills/review").symlink_to(home / "elsewhere/review")
+    assert og("skills")[0] == 0
+    assert not (store / "review").is_symlink() and (store / "review/SKILL.md").read_text() == "review\n"

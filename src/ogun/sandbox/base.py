@@ -130,6 +130,7 @@ def setup(sb: str) -> bool:
     if not apt_tools(sb):
         return False
     claude_update(sb)
+    mount_links(sb)
     log.step("provision")
     p = session.provision(sb)
     if p is not None and p.returncode:
@@ -153,6 +154,24 @@ def setup(sb: str) -> bool:
                  "to try again, run:", fix=log.cmd(f"og {sb} --sync"))
     session.ship_script(sb)
     return True
+
+
+def mount_links(sb: str) -> None:
+    """The links the sandbox's mounts were reached through, made inside
+    (sandbox-scripts/mount-links.sh), before the provision command, which may run
+    through one. From its create record; a failure is said, and setup goes on."""
+    from ogun.core import records
+    from ogun.sandbox import session
+    pairs = [x for x in (records.read_record(sb) or {}).get("links") or []
+             if isinstance(x, list) and len(x) == 2 and all(isinstance(p, str) for p in x)]
+    if not pairs:
+        return
+    log.step("linked mounts")
+    p = session.in_sandbox(sb, "mount-links.sh", *(v for pr in pairs for v in pr), wait="making the links its mounts were named by")
+    if p.returncode:
+        log.warn(f"  {log.WARNING} not every linked mount could be made inside; their own paths work there:")
+        for line in (p.stdout or "").splitlines()[-5:]:
+            log.note(log.shown(line))
 
 
 def apt_tools(sb: str) -> bool:

@@ -3,6 +3,8 @@ read-only, written into the workspace with og's files kept out of git."""
 
 import subprocess
 
+import pytest
+
 from ogun.sandbox import envfile
 
 
@@ -93,3 +95,56 @@ def test_ogs_files_go_in_the_repos_own_exclude_once_from_a_subfolder_and_a_linke
     ex.write_text("")
     envfile.git_excludes(str(wt))
     assert (wt / ".git").is_file() and ".sbxenv.yaml" in ex.read_text().splitlines()
+
+
+# ── a mount reached through a link: the real path mounted, the link kept to make inside ──
+
+def test_a_host_mount_named_through_a_link_mounts_its_real_path(home, monkeypatch):
+    (home / "dotfiles/claude").mkdir(parents=True)
+    (home / "sandbox-setup").symlink_to(home / "dotfiles/claude")
+    monkeypatch.setenv("OG_HOST_RO_MOUNTS", "~/sandbox-setup")
+    d = str(home / "Projects/personal/ef")
+    assert envfile.host_mounts(d) == [(str(home / "sandbox-setup"), str(home / "dotfiles/claude"))]
+    assert f'  - path: "{home}/dotfiles/claude"' in env_lines(home) and not any("sandbox-setup" in x for x in env_lines(home))
+    assert envfile.linked(str(home / "sandbox-setup")) == (str(home / "sandbox-setup"), str(home / "dotfiles/claude"))
+
+
+def test_a_plain_folder_has_no_link(home):
+    (home / "plain").mkdir()
+    assert envfile.linked(str(home / "plain")) is None
+
+
+# ── a link in a mounted folder whose target no mount covers: said, never mounted ──
+
+@pytest.fixture
+def setup_dir(home):
+    s = home / "dotfiles/claude"
+    (s / ".git").mkdir(parents=True)
+    (home / "notes").mkdir()
+    (home / "notes/agent.md").write_text("x")
+    (s / "CLAUDE.md").symlink_to(home / "notes/agent.md")      # outside every mount
+    (s / "inside.md").write_text("y")
+    (s / "same.md").symlink_to(s / "inside.md")                # inside the mount
+    (s / ".git/hook").symlink_to(home / "notes/agent.md")      # in .git: never looked at
+    (s / "gone.md").symlink_to(home / "nowhere")               # nothing there on the Mac either
+    return s
+
+
+def test_only_a_link_to_something_outside_every_mount_is_found(setup_dir, home):
+    found, cut = envfile.outside_links([str(setup_dir)], [str(setup_dir)])
+    assert found == [(str(setup_dir / "CLAUDE.md"), str(home / "notes/agent.md"))] and not cut
+
+
+def test_a_target_another_mount_covers_isnt_found(setup_dir, home):
+    assert envfile.outside_links([str(setup_dir)], [str(setup_dir), str(home / "notes")])[0] == []
+
+
+def test_looking_stops_after_the_cap_and_says_so(setup_dir):
+    assert envfile.outside_links([str(setup_dir)], [str(setup_dir)], cap=1)[1] is True
+
+
+def test_each_outside_link_is_said_with_the_folder_that_would_cover_it(setup_dir, capfd):
+    envfile.say_outside_links([str(setup_dir)], [str(setup_dir)])
+    err = capfd.readouterr().err
+    assert "~/dotfiles/claude/CLAUDE.md links to ~/notes/agent.md, which this sandbox doesn't mount" in err
+    assert "add ~/notes to host_ro_mounts" in err

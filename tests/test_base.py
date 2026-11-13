@@ -478,3 +478,67 @@ def test_no_docker_nothing_written(tmp_path):
     assert p.returncode == 0
     assert not (h / ".docker").exists() and (h / "env.sh").read_text() == "x\n"
 
+
+
+# ── linked mounts: made inside before the provision command, from the create record ──
+
+def record_links(home, name, links):
+    from ogun.core import files, records
+    records.record_file(name).parent.mkdir(parents=True, exist_ok=True)
+    files.write_json(records.record_file(name), {"sandbox": name, "links": links}, private=True)
+
+
+def test_setup_makes_the_linked_mounts_inside_before_the_provision_command(box, home):
+    record_links(home, "box", [["/Users/me/sandbox-setup", "/Users/me/dotfiles/claude"]])
+    base.setup("box")
+    c = next(c for c in box.calls if "mount-links.sh" in c)
+    assert c[4] == (paths.SCRIPTS / "mount-links.sh").read_text()
+    assert c[-2:] == ["/Users/me/sandbox-setup", "/Users/me/dotfiles/claude"]
+    assert ran(box, "mount-links.sh")[0] < ran(box, "agent-config/provision.sh")[0]
+
+
+def test_no_linked_mount_runs_nothing(box, home):
+    record_links(home, "box", [])
+    base.setup("box")
+    assert not ran(box, "mount-links.sh")
+
+
+def test_a_link_that_cant_be_made_is_said_and_setup_goes_on(box, home, capfd):
+    record_links(home, "box", [["/a", "/b"]])
+    box.answer(["exec", "box"], stdout="mount-links: couldn't make /a -> /b\n", code=1, has="mount-links.sh")
+    assert base.setup("box")
+    out = "".join(capfd.readouterr())
+    assert "not every linked mount could be made inside" in out and "couldn't make /a -> /b" in out
+
+
+# ── mount-links.sh itself, against scratch folders ──
+
+def links_script(*args):
+    return subprocess.run(["bash", str(paths.SCRIPTS / "mount-links.sh"), *args], capture_output=True, text=True)
+
+
+def test_the_script_makes_each_link_and_its_parent_folders(tmp_path):
+    (tmp_path / "real").mkdir()
+    p = links_script(str(tmp_path / "home/sandbox-setup"), str(tmp_path / "real"))
+    assert p.returncode == 0 and os.readlink(tmp_path / "home/sandbox-setup") == str(tmp_path / "real")
+
+
+def test_the_script_replaces_an_old_link(tmp_path):
+    (tmp_path / "old").mkdir()
+    (tmp_path / "new").mkdir()
+    (tmp_path / "l").symlink_to(tmp_path / "old")
+    assert links_script(str(tmp_path / "l"), str(tmp_path / "new")).returncode == 0
+    assert os.readlink(tmp_path / "l") == str(tmp_path / "new") and not (tmp_path / "old/new").exists()
+
+
+def test_the_script_never_replaces_a_real_folder_and_says_so(tmp_path):
+    (tmp_path / "taken").mkdir()
+    (tmp_path / "taken/keep").write_text("x")
+    p = links_script(str(tmp_path / "taken"), str(tmp_path / "elsewhere"))
+    assert p.returncode == 0 and (tmp_path / "taken/keep").read_text() == "x" and not (tmp_path / "taken").is_symlink()
+    assert "isn't a link; left as it is" in p.stdout
+
+
+def test_the_script_refuses_a_path_that_isnt_full(tmp_path):
+    p = links_script("relative/link", str(tmp_path))
+    assert p.returncode == 1 and "not full paths" in p.stdout and not os.path.lexists("relative/link")

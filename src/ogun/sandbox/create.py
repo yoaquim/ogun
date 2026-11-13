@@ -12,7 +12,7 @@ from pathlib import Path
 
 from ogun.core import boxes, config, log, naming, sbx, settings
 from ogun.net import baseline, egress, pushrules
-from ogun.sandbox import appa, choose, envfile, facts, template
+from ogun.sandbox import appa, choose, envfile, facts, init, template
 
 # ── the create itself ──
 
@@ -69,7 +69,9 @@ def skills() -> bool:
     except OSError:
         log.err(f"og: couldn't make the skills store at {log.path(store)}")
         return False
-    if (subprocess.run(["rsync", "-a", "--delete", f"{src}/", f"{store}/"]).returncode
+    # --copy-unsafe-links: a skill linked in from elsewhere arrives as its files, never a
+    # link to a Mac path no sandbox has
+    if (subprocess.run(["rsync", "-a", "--copy-unsafe-links", "--delete", f"{src}/", f"{store}/"]).returncode
             or subprocess.run(["chmod", "-R", "a-w", str(store)]).returncode):
         log.err(f"og: couldn't mirror {log.path(src)} into sbx's skills store (above)")
         return False
@@ -203,10 +205,7 @@ def create(name: str, org: str, d: str, kind: str = "session", item: str = "", a
     rel = [x for x in registry.related(d) if x]
     _listed("related, mounted read-only:", rel)
     _listed("MCP servers (register with 'sbx mcp add' first):", mcp.servers(d))
-    # plugin marketplaces: mounted read-only unless another
-    # rule already mounts the path — the workspace itself, or a related checkout
-    mkt = [x for x in choose.marketplaces(d) if x and x != d and x not in rel]
-    _listed("plugin marketplaces, mounted read-only:", mkt)
+    mkt, links = mount_plan(d, rel, sshkd)
     img, decision = choose.choose_template(d)
     rc, v = recipe_appa(decision)
     if rc == 2:
@@ -233,8 +232,26 @@ def create(name: str, org: str, d: str, kind: str = "session", item: str = "", a
     # what was decided for it — template, mounts as this create wrote them (another
     # create from the same workspace may write over the file meanwhile), runtime
     # egress; a record that could not be written is warned, never fatal
-    facts.record(name, kind, d, decision, yaml, allow_runtime_egress(name, decision))
+    facts.record(name, kind, d, decision, yaml, allow_runtime_egress(name, decision), links)
     return finish(name, org, item, d, rel, given, appa_on)
+
+
+def mount_plan(d: str, rel: list[str], sshkd: str) -> tuple[list[str], list[tuple[str, str]]]:
+    """The plugin marketplaces to mount (real paths, read-only, none another rule already
+    mounts: the workspace, a related checkout), and each mount reached through a link
+    as (link, real path), which setup makes inside. A link in a mounted folder whose
+    target no mount covers is said, never mounted."""
+    from ogun.exchange import folders
+    named = [x for x in choose.marketplaces(d) if x]
+    mkt = [x for x in dict.fromkeys(init.real_path(m) for m in named) if x not in (d, init.real_path(d)) and x not in rel]
+    _listed("plugin marketplaces, mounted read-only:", mkt)
+    hosts = envfile.host_mounts(d, rel)
+    links = [p for p in [*(envfile.linked(a) for a, _ in hosts), *(envfile.linked(m) for m in named)]
+             if p and p[1] in mkt + [r for _, r in hosts]]
+    envfile.say_outside_links([r for _, r in hosts] + mkt,
+                              [d, init.real_path(d), *rel, *(r for _, r in hosts), *mkt, sshkd,
+                               init.real_path(str(folders.exchange()))])
+    return mkt, links
 
 
 def finish(name: str, org: str, item: str, d: str, rel: list[str], given: list, appa_on: bool) -> bool:
