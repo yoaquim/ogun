@@ -116,4 +116,5 @@ with no configuration ([setup](docs/setup.md)).
 
 [Overview](docs/README.md) · [Setup](docs/setup.md) · [Sandboxes](docs/sandboxes.md) ·
 [Network](docs/network.md) · [Secrets](docs/secrets.md) · [Templates](docs/templates.md) ·
-[File exchange](docs/exchange.md) · [OpenAPPA](docs/appa.md) · [Config](docs/config.md)
+[File exchange](docs/exchange.md) · [OpenAPPA](docs/appa.md) · [Config](docs/config.md) ·
+[Testing](docs/testing.md)

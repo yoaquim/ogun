@@ -77,15 +77,16 @@ The agent's side (its rules for the exchange, the read guard, a way to publish n
 ## Verify on the Mac
 
 These can't be tested from inside a sandbox. The logic is covered by the test suite. The
-mounts and the xattr are macOS-only. After the first create following an exchange change,
-check that:
+mounts and the xattr are macOS-only. The end-to-end test
+([Testing og](../testing.md#end-to-end)) checks a given file reads inside, a file in `out/`
+comes back, a program is quarantined and a script comes back without its exec bit, marked.
+After the first create following an exchange change, check the rest by hand:
 
 - `inbox/` is read-only inside; the sandbox's own `in/` is mounted read-only, and another
   sandbox's `in/` isn't visible;
 - another sandbox's `shared/` directory can't be written;
-- a symlink, a fake `.pdf` (really a Mach-O), a program and an oversized file in `out/`
-  each get quarantined; a script with its exec bit comes back without it;
-- a taken file carries the quarantine xattr;
+- a symlink, a fake `.pdf` (really a Mach-O) and an oversized file in `out/` each get
+  quarantined;
 - `shared/`'s git log attributes a handoff to the right sandbox.
 
 If sbx rejects nested mounts (`shared/` read-only with `shared/<name>/` read-write inside),
