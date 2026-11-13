@@ -63,6 +63,25 @@ cp "$here/settings.json" ~/.claude/settings.json
 Keep secrets out of this folder: every sandbox can read it. A secret goes to one sandbox with
 `og pass` ([Secrets](secrets.md)).
 
+### Keeping your setup elsewhere
+
+The folder can be anywhere: your dotfiles, a repo, wherever your Claude setup already lives.
+Name it in both settings, or link `~/sandbox-setup` to it; links work:
+
+- **A linked folder.** og mounts the folder the link points to, and makes the same link
+  inside the sandbox, so `~/sandbox-setup/provision.sh` runs there as it does on the Mac. The
+  same goes for a plugin marketplace whose path is a link.
+- **Linked skills.** A skill in `skills_dir` that links to a folder elsewhere arrives in the
+  store as its files.
+- **A link to something outside the mounts** (a `CLAUDE.md` that links to `~/notes/agent.md`)
+  points at nothing inside: og mounts only what you name. At create it says which link, and
+  which folder to add to `host_ro_mounts` for it.
+
+Mount the files you want, not all of `~/.claude`: it holds your sessions and project
+history. Copy `settings.json` into place rather than linking it: Claude Code writes to it,
+and the mount is read-only. `CLAUDE.md` can be a link to the mounted file, so an edit on the
+Mac reaches every sandbox at once.
+
 ## Skills
 
 ```toml
