@@ -28,8 +28,11 @@ mkdir -p "$FIX/home/.config/ogun" && ln -s "$OGUN/tests/fixtures/templates" "$FI
 
 # comp <word>… — complete the LAST word of `og <words>`, in $FIX/cwd; prints one
 # candidate per line (sorted), then `compopt:<args>` if compopt was called.
+# OG_COMP_SHELL picks the shell completing: bash (the default), a path to another bash
+# (macOS's 3.2), or zsh, through its glue (completion.zsh) with compadd recorded
 comp() {
-  ( cd "$FIX/cwd" && HOME="$FIX/home" PATH="$FIX/bin:$PATH" OG_EXCHANGE="$FIX/ex" OG_PROJECTS="${PROJ:-$FIX/projects}" bash -c '
+  if [[ "${OG_COMP_SHELL:-bash}" == zsh ]]; then comp_zsh "$@"; return; fi
+  ( cd "$FIX/cwd" && HOME="$FIX/home" PATH="$FIX/bin:$PATH" OG_EXCHANGE="$FIX/ex" OG_PROJECTS="${PROJ:-$FIX/projects}" "${OG_COMP_SHELL:-bash}" -c '
       [[ -n "${COMP_FILE_ONLY:-}" ]] && unset OG_EXCHANGE OG_PROJECTS   # the settings file alone says where
       . "$OGUN/completion.bash"
       compopt() { printf "compopt:%s\n" "$*" >> "$FIX/compopt.log"; }
@@ -39,7 +42,17 @@ comp() {
       printf "%s\n" "${COMPREPLY[@]}" | sort
       cat "$FIX/compopt.log" 2>/dev/null' _ "$@" )
 }
-export -f comp
+# zsh: the words as zsh holds them, its glue's _og_zsh run, and compadd's candidates
+# printed (sorted), its -f as the compopt line bash's filenames would give
+comp_zsh() {
+  ( cd "$FIX/cwd" && HOME="$FIX/home" PATH="${OG_COMP_PATH:-}$FIX/bin:$PATH" OG_EXCHANGE="$FIX/ex" OG_PROJECTS="${PROJ:-$FIX/projects}" zsh -fc '
+      [[ -n "${COMP_FILE_ONLY:-}" ]] && unset OG_EXCHANGE OG_PROJECTS
+      source "$OGUN/completion.bash"
+      compadd() { local f=0; while [[ $1 == -* && $1 != -- ]]; do [[ $1 == -f ]] && f=1; shift; done
+        [[ $1 == -- ]] && shift; (( $# )) && print -rl -- "$@" | sort; (( f )) && print "compopt:-o filenames"; return 0; }
+      words=(og "$@"); CURRENT=$(( $# + 1 )); _og_zsh; return 0' _ "$@" )
+}
+export -f comp comp_zsh
 has() { grep -qxF -- "$2" <<<"$1"; }
 export -f has
 
@@ -170,7 +183,7 @@ expect_cmd 0 "completion.bash adds only completion: its helpers, its command lis
            now_f=$(declare -F | cut -d" " -f3 | sort); now_v=$(compgen -v | sort)
            added=$(comm -13 <(printf "%s\n" "$mid_f") <(printf "%s\n" "$now_f") | paste -sd" " -)
            want=$(printf "%s\n" _og_complete _og_complete_args _og_comp_cmds _og_comp_names _og_comp_owners _og_comp_words _og_dirs \
-                  _og_exchange_box _og_mcp_registry _og_name_chars _og_run _og_template_name_ok _og_template_recipes | sort | paste -sd" " -)
+                  _og_exchange_box _og_mcp_registry _og_name_chars _og_reply _og_run _og_template_name_ok _og_template_recipes | sort | paste -sd" " -)
            [ "$added" = "$want" ] || { echo "functions added: [$added]"; exit 1; }
            newv=$(comm -13 <(printf "%s\n" "$mid_v") <(printf "%s\n" "$now_v") | grep -vxE "mid_f|mid_v|now_f|_" | paste -sd" " -)
            [ "$newv" = "_OG_COMP_CMDS _OG_DIR" ] || { echo "variables added: [$newv]"; exit 1; }

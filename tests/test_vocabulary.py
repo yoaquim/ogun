@@ -35,13 +35,13 @@ VOCABULARY = frozenset({
 # personal token), so never a profile's or a recipe's name, where it would read as one
 NOT_AS = {"a profile": frozenset({"personal"}), "a recipe": frozenset({"personal"})}
 
-# hosts og really talks to, the documentation it links, or a real installer an example recipe
-# downloads from: named whole, never examples
+# hosts og really talks to, the documentation it links, a real installer an example recipe
+# downloads from, or the source its test container builds from: named whole, never examples
 PUBLIC = frozenset({
     "github.com", "api.github.com", "gitlab.com", "pypi.org", "files.pythonhosted.org",
     "objects.githubusercontent.com", "index.crates.io", "static.crates.io", "static.rust-lang.org", "*.rust-lang.org",
     "gateway.docker.internal", "www.openappa.com", "www.rust-lang.org", "www.w3.org", "archestra-ai", "openappa",
-    "sh.rustup.rs", "docker", "sbx-releases", "astral-sh", "uv", "settings", "personal-access-tokens",
+    "sh.rustup.rs", "docker", "sbx-releases", "astral-sh", "uv", "settings", "personal-access-tokens", "ftp.gnu.org",
 })
 
 # Each, a pattern and what it finds a name in: its one group is the name, or, marked
