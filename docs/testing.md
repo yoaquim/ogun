@@ -32,7 +32,8 @@ tests/docker/run.sh           # build the image from this checkout, run the suit
 tests/docker/run.sh python    # a filter, as test.sh takes
 ```
 
-Needs only Docker. The image is Debian with the tools og's tests call, and runs
+Needs only Docker. The image is Debian with the tools og's tests call, the Mac's two shells
+among them (zsh, and bash 3.2 built from GNU's source, for completion), and runs
 `./setup.sh` then `./test.sh` as a user that isn't root. Here a skip is a failure: the image
 has everything a test needs, so a test that couldn't run means the image is wrong.
 

@@ -7,7 +7,9 @@ Its settings come from `~/.config/ogun/config.toml` and the environment
 ([flags-and-env.md](flags-and-env.md#settings)), never a shell profile. The command table
 (`help.py`) is the one list of commands and their arguments, which `og help`, every usage
 line and tab completion read. Tab completion is og's own, `completion.bash`, tested to
-define nothing else; a shell profile sources it. What
+define nothing else and to work in bash 3.2 (a Mac's `/bin/bash`), bash 5 and zsh; a shell
+profile sources it. In zsh it loads `completion.zsh`, which asks bash, running
+`completion.bash`, for what a Tab offers, so both shells offer the same. What
 it asks of og goes through `_og_run`, the installed og in its own folder (`og internal …`). The baseline lists live in
 `src/ogun/net/baseline.toml`, beside the module that reads it; `og internal baseline`
 prints the baseline og applies as a `[baseline]` table, ready to copy into `config.toml`.

@@ -89,4 +89,4 @@ if [[ -n "$bin" ]]; then
     done
     case ":$PATH:" in *":$bin:"*) ;; *) echo "ogun setup: $bin isn't on your PATH: add it to run og" ;; esac
 fi
-echo "ogun setup: tab completion for og: in your shell profile, source $here/completion.bash"
+echo "ogun setup: tab completion for og: in your shell profile (~/.zshrc or ~/.bash_profile), source $here/completion.bash"
