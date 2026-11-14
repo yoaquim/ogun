@@ -22,8 +22,13 @@ under() { local o; o=$(env "$@" bash "$OGUN/tests/sh/completion.test.sh" 2>&1) &
   grep -E 'FAIL|failed' <<<"$o" | head -n 10; return 1; }
 
 B32="$(command -v bash3.2 || true)"
+# a folder completes with a slash in every bash: per word with compopt where there is one,
+# for the whole command in bash 3.2, which has none
+filenames() { "$1" -c '. "$OGUN/completion.bash"; complete -p og' | grep -q -- "$2"; }
+expect_cmd 1 "in a bash with compopt, og's completion asks for -o filenames per word, not for all" filenames bash "-o filenames"
 if [[ -n "$B32" ]]; then
   expect_cmd 0 "every completion case passes under bash 3.2 ($("$B32" -c 'echo "$BASH_VERSION"'))" under OG_COMP_SHELL="$B32"
+  expect_cmd 0 "…where, with no compopt, og's completion is registered with -o filenames" filenames "$B32" "-o filenames"
 else
   skip "every completion case under bash 3.2: no bash3.2 here (the test container has one)"
 fi
@@ -35,21 +40,33 @@ if command -v zsh >/dev/null; then
   expect_cmd 0 "every completion case passes under zsh${B32:+, bash 3.2 answering}" \
     under OG_COMP_SHELL=zsh OG_COMP_PATH="${B32:+$BIN32:}"
 
-  # one real Tab: an interactive zsh in a pseudo-terminal, `og tak` and Tab typed, then
-  # the line echoed back, as the Tab left it
-  real_tab() { timeout 60 zsh -fc '
+  # completion.zsh found beside the file sourced, whatever zsh sets $0 to, never in the
+  # folder the shell is in
+  argzero() { mkdir -p "$TEST_TMP/elsewhere" && printf 'print planted\n' > "$TEST_TMP/elsewhere/completion.zsh"
+    local o; o=$(cd "$TEST_TMP/elsewhere" && zsh -fc 'setopt posix_argzero; source "$OGUN/completion.bash"; (( $+functions[_og_zsh] ))') \
+      && [[ "$o" != *planted* ]]; }
+  expect_cmd 0 "with POSIX_ARGZERO set, zsh still loads og's own completion.zsh, not one in the current folder" argzero
+  # a real Tab: an interactive zsh in a pseudo-terminal, its profile <zshrc>, <keys> typed
+  # (a Tab among them), then the line printed back as the Tab left it: <want>
+  tab() { local z; z=$(mktemp -d "$TEST_TMP/zdot.XXXX"); printf '%s\n' "$1" > "$z/.zshrc"
+    ( cd "$TEST_TMP/tab-cwd" && timeout 60 zsh -fc '
       zmodload zsh/zpty || exit 2
-      zpty t env HOME="$1" PATH="$2" TERM=dumb zsh -f -i
-      zpty -w t "bindkey -e; PS1=\"> \"; source \"\$OGUN/completion.bash\""
+      zpty t env HOME="$1" ZDOTDIR="$2" PATH="$3" TERM=dumb OGUN="$OGUN" zsh -i
       sleep 2
-      zpty -w -n t $'"'"'og tak\t'"'"'
-      sleep 2
+      zpty -w -n t "$4"
+      sleep 3
       zpty -w -n t $'"'"'\x01print -r -- TABBED: \n'"'"'
-      out=""; for i in {1..50}; do zpty -r -t t line && out+=$line || sleep 0.1; [[ $out == *"TABBED: og take"* ]] && break; done
+      out=""; for i in {1..80}; do zpty -r -t t line && out+=$line || sleep 0.1; [[ $out == *"TABBED: $5"* ]] && break; done
       zpty -d t
-      [[ $out == *"TABBED: og take"* ]]' _ "$TEST_TMP/tab-home" "${B32:+$BIN32:}$PATH"; }
-  mkdir -p "$TEST_TMP/tab-home"
-  expect_cmd 0 "a real Tab in zsh: og tak<Tab> becomes og take" real_tab
+      [[ $out == *"TABBED: $5"* ]]' _ "$TEST_TMP/tab-home" "$z" "${B32:+$BIN32:}$PATH" "$2" "$3" ); }
+  mkdir -p "$TEST_TMP/tab-home" "$TEST_TMP/tab-cwd" && touch "$TEST_TMP/tab-cwd/with space.txt"
+  rc='bindkey -e; PS1="> "'
+  expect_cmd 0 "a real Tab in zsh: og tak<Tab> becomes og take" \
+    tab "$rc"$'\nsource "$OGUN/completion.bash"' $'og tak\t' "og take"
+  expect_cmd 0 "…with a profile that runs its own compinit after sourcing og's file (oh-my-zsh's order)" \
+    tab "$rc"$'\nsource "$OGUN/completion.bash"\nautoload -Uz compinit && compinit -i' $'og tak\t' "og take"
+  expect_cmd 0 "…and a file name with a space: og give cub with\\ s<Tab> becomes og give cub with\\ space.txt" \
+    tab "$rc"$'\nsource "$OGUN/completion.bash"' $'og give cub with\\ s\t' "og give cub with space.txt"
 else
   skip "every completion case under zsh, and a real Tab: no zsh here (the test container has it)"
 fi

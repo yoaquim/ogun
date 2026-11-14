@@ -22,6 +22,12 @@ _og_zsh() {
     if (( files )); then compadd -U -f -- "${got[@]}"; else compadd -U -Q -- "${got[@]}"; fi
 }
 
-# zsh's completion system, started when the profile hasn't
-(( ${+functions[compdef]} )) || { autoload -Uz compinit && compinit -i; }
-compdef _og_zsh og ogun
+# registered just before the first prompt, once the whole profile has run: a compinit
+# the profile runs after this file would load a dump made without og, and lose it.
+# zsh's completion system is started then if the profile never did
+_og_zsh_register() {
+    add-zsh-hook -d precmd _og_zsh_register
+    (( ${+functions[compdef]} )) || { autoload -Uz compinit && compinit -i; }
+    compdef _og_zsh og ogun
+}
+autoload -Uz add-zsh-hook && add-zsh-hook precmd _og_zsh_register

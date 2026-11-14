@@ -19,7 +19,7 @@ echo "og completion"
 
 FIX="$TEST_TMP/completion"
 mkdir -p "$FIX/projects/umbrella" "$FIX/projects/hooli" "$FIX/bin" "$FIX/cwd/subdir" "$FIX/home/Downloads" "$FIX/ex/boxes/cub/out" "$FIX/ex/boxes/empty/out"
-touch "$FIX/cwd/report.pdf" "$FIX/cwd/notes.md" "$FIX/ex/boxes/cub/out/summary.pdf" "$FIX/ex/boxes/cub/out/with space.txt"
+touch "$FIX/cwd/report.pdf" "$FIX/cwd/notes.md" "$FIX/cwd/with space.txt" "$FIX/ex/boxes/cub/out/summary.pdf" "$FIX/ex/boxes/cub/out/with space.txt"
 printf '#!/bin/sh\necho "$*" >> "%s/sbx.log"\n[ "$1" = ls ] && printf "SANDBOX  AGENT  STATUS\\ncub  claude  running\\nfern  claude  stopped\\n"\nexit 0\n' "$FIX" > "$FIX/bin/sbx"
 chmod +x "$FIX/bin/sbx"
 export FIX
@@ -66,6 +66,9 @@ expect_cmd 0 "og give cub ~/Dow<TAB>: a tilde path completes (the case that comp
   bash -c 'has "$(comp give cub "~/Dow")" "~/Downloads"'
 expect_cmd 0 "…and every later argument keeps completing files" \
   bash -c 'o=$(comp give cub report.pdf no); has "$o" notes.md && has "$o" "compopt:-o filenames"'
+expect_cmd 0 "…a name with a space, typed escaped or in quotes, still finds its file" \
+  bash -c 'has "$(comp give cub "with\\ s")" "with space.txt" && has "$(comp give cub "\"with s")" "with space.txt" \
+           && has "$(comp give cub "'"'"'with s")" "with space.txt"'
 expect_cmd 0 "og take <TAB>: sandbox names" \
   bash -c 'o=$(comp take ""); has "$o" cub && has "$o" fern && ! has "$o" report.pdf'
 mkdir -p "$FIX/ex/sandboxes/sessions/oldbox/out" && touch "$FIX/ex/sandboxes/sessions/oldbox/out/old.txt"
@@ -75,6 +78,8 @@ expect_cmd 0 "og take cub <TAB>: the files in its out/, plus --all" \
   bash -c 'o=$(comp take cub ""); has "$o" summary.pdf && has "$o" --all && has "$o" "with\\ space.txt" && ! has "$o" report.pdf'
 expect_cmd 0 "…filtered by what's typed" \
   bash -c 'o=$(comp take cub su); has "$o" summary.pdf && ! has "$o" "with\\ space.txt" && ! has "$o" --all'
+expect_cmd 0 "…and a name with a space, typed escaped, still matches" \
+  bash -c 'o=$(comp take cub "with\\ s"); has "$o" "with\\ space.txt" && ! has "$o" summary.pdf'
 expect_cmd 0 "og take <name with no box> <TAB>: nothing, and no error" \
   bash -c '[ -z "$(comp take nobox "")" ]'
 expect_cmd 0 "og take ../escape <TAB>: an invalid name reads nothing outside the exchange" \
@@ -183,7 +188,7 @@ expect_cmd 0 "completion.bash adds only completion: its helpers, its command lis
            now_f=$(declare -F | cut -d" " -f3 | sort); now_v=$(compgen -v | sort)
            added=$(comm -13 <(printf "%s\n" "$mid_f") <(printf "%s\n" "$now_f") | paste -sd" " -)
            want=$(printf "%s\n" _og_complete _og_complete_args _og_comp_cmds _og_comp_names _og_comp_owners _og_comp_words _og_dirs \
-                  _og_exchange_box _og_mcp_registry _og_name_chars _og_reply _og_run _og_template_name_ok _og_template_recipes | sort | paste -sd" " -)
+                  _og_dequote _og_exchange_box _og_mcp_registry _og_name_chars _og_reply _og_run _og_template_name_ok _og_template_recipes | sort | paste -sd" " -)
            [ "$added" = "$want" ] || { echo "functions added: [$added]"; exit 1; }
            newv=$(comm -13 <(printf "%s\n" "$mid_v") <(printf "%s\n" "$now_v") | grep -vxE "mid_f|mid_v|now_f|_" | paste -sd" " -)
            [ "$newv" = "_OG_COMP_CMDS _OG_DIR" ] || { echo "variables added: [$newv]"; exit 1; }

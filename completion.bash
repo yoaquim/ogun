@@ -7,7 +7,8 @@
 # zsh sourcing this: its own glue, beside this file, and nothing below (zsh reads a file
 # a command at a time, so it never parses what follows). zsh sets $0 to the file it sources
 if [ -n "${ZSH_VERSION:-}" ]; then
-    case "$0" in */*) _OG_DIR=${0%/*} ;; *) _OG_DIR=. ;; esac
+    # the file being sourced, whatever $0 is set to; eval, so bash never parses zsh's syntax
+    eval '_OG_DIR=${${(%):-%x}:A:h}'
     # shellcheck source=/dev/null
     . "$_OG_DIR/completion.zsh"; return
 fi
@@ -82,6 +83,17 @@ _og_name_chars() { [[ "$1" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; }
 # src/ogun/help.py's COMMANDS (tests/sh/shared-values.test.sh)
 _OG_COMP_CMDS="ls attach sh ports doctor stop ssh rm net allow style skills policy log pass token give ship take scan tidy project mcp template help"
 _og_comp_cmds() { printf '%s\n' $_OG_COMP_CMDS; }
+# _og_dequote <word>: the word as typed, unquoted (with\ s, "with s, 'with s → with s):
+# what a file is named, which compgen and a name compare need
+_og_dequote() {
+    local w=$1
+    case "$w" in
+        \'*) w=${w#\'}; w=${w%\'} ;;
+        \"*) w=${w#\"}; w=${w%\"} ;;
+        *\\*) w=$(printf '%s' "$w" | sed 's/\\\(.\)/\1/g') ;;
+    esac
+    printf '%s' "$w"
+}
 # _og_reply: COMPREPLY from its input, a line each (bash 3.2 has no mapfile)
 _og_reply() { local l; COMPREPLY=(); while IFS= read -r l; do COMPREPLY+=("$l"); done; }
 _og_comp_words() { _og_reply < <(compgen -W "$1" -- "$cur"); }   # <words>, against the caller's $cur
@@ -125,7 +137,7 @@ _og_complete_args() {
             compopt -o filenames 2>/dev/null
             # --clip first, or right after the sandbox's name; files anywhere
             if (( COMP_CWORD == 2 )); then names="--clip $(_og_comp_names)"; elif (( COMP_CWORD == 3 )); then names=--clip; fi
-            _og_reply < <(compgen -W "${names:-}" -- "$cur"; compgen -f -- "$cur")
+            _og_reply < <(compgen -W "${names:-}" -- "$cur"; compgen -f -- "$(_og_dequote "$cur")")
             return ;;
         allow:2|net:2) _og_comp_words "--all $(_og_comp_names)"; return ;;
         net:*)   # one of the three, until one is given; the domains are yours to type
@@ -140,9 +152,10 @@ _og_complete_args() {
             COMPREPLY=()
             _og_name_chars "${COMP_WORDS[2]}" || return
             box=$(_og_exchange_box "${COMP_WORDS[2]}" 2>/dev/null) && [[ -d "$box/out" ]] || return
+            local typed; typed=$(_og_dequote "$cur")
             _og_reply < <(compgen -W "--all" -- "$cur"
                 find "$box/out" -mindepth 1 -maxdepth 1 -print0 2>/dev/null \
-                    | while IFS= read -r -d '' f; do f=${f##*/}; [[ "$f" == "$cur"* ]] && printf '%q\n' "$f"; done)
+                    | while IFS= read -r -d '' f; do f=${f##*/}; [[ "$f" == "$typed"* ]] && printf '%q\n' "$f"; done)
             return ;;
         rm:*)   # the flag and the name, in either order: offer whichever is still missing
             local force="--force --if-clean" nm; nm=$(_og_comp_names)
@@ -183,7 +196,10 @@ _og_complete_args() {
     # the commands (_OG_COMP_CMDS, kept equal to help.py's table by tests/sh/shared-values.test.sh)
     _og_reply < <(compgen -W "$(_og_comp_cmds) --rm --sync --no-attach --appa --org --item --name --help $names" -- "$cur")
 }
-complete -F _og_complete ogun og
+# -o filenames (a folder completes with a slash, files are quoted) is asked for per word with
+# compopt; bash 3.2, a Mac's, has none, so there it's set for every word
+if type compopt >/dev/null 2>&1; then complete -F _og_complete ogun og
+else complete -o filenames -F _og_complete ogun og; fi
 
 # Run as a script, it answers another shell (completion.zsh):
 #   bash completion.bash --complete <word index> og <word>…   what a Tab offers, a line

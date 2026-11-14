@@ -25,7 +25,8 @@ token items: [Setting up og](setup.md).
   file that isn't a link is left alone, and said. Run it again after a bump.
 - **Tab completion.** Source `completion.bash` from your shell profile, zsh's (`~/.zshrc`)
   or bash's; setup ends by saying so. It works with the shells a Mac ships: zsh, through
-  `completion.zsh` beside it, and bash from 3.2.
+  `completion.zsh` beside it, and bash from 3.2. In zsh the line can go anywhere in the
+  profile: og registers once the profile has run, after any `compinit` of its own.
 - **Your files.** og runs with nothing of yours: a registry, templates, settings and the rest
   go in its config folder ([og's config folder](config.md)).
 - **Tests.** `test.sh [<filter>]` runs every file in `tests/sh/`, among them og's pytest
