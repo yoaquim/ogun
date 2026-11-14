@@ -152,10 +152,13 @@ _og_complete_args() {
             COMPREPLY=()
             _og_name_chars "${COMP_WORDS[2]}" || return
             box=$(_og_exchange_box "${COMP_WORDS[2]}" 2>/dev/null) && [[ -d "$box/out" ]] || return
-            local typed; typed=$(_og_dequote "$cur")
+            # quoted here (%q), unless readline quotes them: in bash 3.2, which has no
+            # compopt, -o filenames is set for the whole command (below)
+            local typed fmt='%q\n'; typed=$(_og_dequote "$cur")
+            type compopt >/dev/null 2>&1 || fmt='%s\n'
             _og_reply < <(compgen -W "--all" -- "$cur"
                 find "$box/out" -mindepth 1 -maxdepth 1 -print0 2>/dev/null \
-                    | while IFS= read -r -d '' f; do f=${f##*/}; [[ "$f" == "$typed"* ]] && printf '%q\n' "$f"; done)
+                    | while IFS= read -r -d '' f; do f=${f##*/}; [[ "$f" == "$typed"* ]] && printf "$fmt" "$f"; done)
             return ;;
         rm:*)   # the flag and the name, in either order: offer whichever is still missing
             local force="--force --if-clean" nm; nm=$(_og_comp_names)

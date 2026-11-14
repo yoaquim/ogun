@@ -29,6 +29,13 @@ expect_cmd 1 "in a bash with compopt, og's completion asks for -o filenames per 
 if [[ -n "$B32" ]]; then
   expect_cmd 0 "every completion case passes under bash 3.2 ($("$B32" -c 'echo "$BASH_VERSION"'))" under OG_COMP_SHELL="$B32"
   expect_cmd 0 "…where, with no compopt, og's completion is registered with -o filenames" filenames "$B32" "-o filenames"
+  # og take's names there are left for readline to quote, as -o filenames does: quoted by og
+  # too, `with space.txt` would arrive as with\\\ space.txt
+  plain() { mkdir -p "$TEST_TMP/ex32/boxes/cub/out" && touch "$TEST_TMP/ex32/boxes/cub/out/with space.txt"
+    "$B32" -c '. "$OGUN/completion.bash"; _OG_DIRS_READ=1 _OG_D_EXCHANGE="$1"
+      COMP_WORDS=(og take cub with); COMP_CWORD=3; _og_complete; printf "%s\n" "${COMPREPLY[@]}"' _ "$TEST_TMP/ex32" \
+      | grep -qxF "with space.txt"; }
+  expect_cmd 0 "…so og take's names go to readline unquoted, which quotes them once" plain
 else
   skip "every completion case under bash 3.2: no bash3.2 here (the test container has one)"
 fi
