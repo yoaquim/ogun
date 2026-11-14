@@ -46,7 +46,7 @@ What they write, each optional:
 | `templates/` | their recipes, `<name>.sh` each ([templates](templates.md)) |
 | `appa.lock` | the OpenAPPA release to install, if they use it |
 
-Tab completion for `og` is `completion.bash`, sourced from their shell profile;
+Tab completion for `og` is `completion.bash`, sourced from their shell profile, zsh's or bash's;
 `setup.sh` ends by saying so.
 
 The settings (each also an environment variable; defaults and details in

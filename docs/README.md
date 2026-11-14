@@ -23,8 +23,9 @@ token items: [Setting up og](setup.md).
   pins and links `og` and `ogun` into `~/.local/bin` (`OG_BIN`; empty, no links), so og
   runs from any shell, script or cron job. A link already there is pointed at this og; a
   file that isn't a link is left alone, and said. Run it again after a bump.
-- **Tab completion.** Source `completion.bash` from your shell profile; setup ends by
-  saying so.
+- **Tab completion.** Source `completion.bash` from your shell profile, zsh's (`~/.zshrc`)
+  or bash's; setup ends by saying so. It works with the shells a Mac ships: zsh, through
+  `completion.zsh` beside it, and bash from 3.2.
 - **Your files.** og runs with nothing of yours: a registry, templates, settings and the rest
   go in its config folder ([og's config folder](config.md)).
 - **Tests.** `test.sh [<filter>]` runs every file in `tests/sh/`, among them og's pytest
